@@ -1,0 +1,21 @@
+: 1
+name: nanoreflex
+version: 0.1.0-a.0.z
+summary: nanoreflex C++ executable
+license: GPL-3.0-or-later ; GNU General Public License v3.0 or later.
+
+description-file: README.md
+url: https://example.org/nanoreflex
+email: lyrahgames@mailbox.org
+#build-error-email: lyrahgames@mailbox.org
+
+depends: * build2 >= 0.15.0
+depends: * bpkg >= 0.15.0
+
+requires: c++20
+requires: linux
+
+requires: assimp
+requires: glm
+requires: sfml-graphics
+requires: glbinding
