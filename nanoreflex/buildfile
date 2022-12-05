@@ -1,4 +1,5 @@
 libs =
+import libs += pthread%lib{pthread}
 import libs += sfml-graphics%lib{sfml-graphics}
 import libs += glbinding%lib{glbinding}
 import libs += glm%lib{glm}

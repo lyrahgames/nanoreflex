@@ -57,6 +57,8 @@ class viewer : viewer_context {
   camera cam{};
 
   scene surface{};
+  basic_scene loading_surface{};
+  future<void> loading_task{};
 
   vec3 aabb_min{};
   vec3 aabb_max{};

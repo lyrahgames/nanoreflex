@@ -4,7 +4,7 @@
 
 namespace nanoreflex {
 
-struct scene {
+struct basic_scene {
   struct vertex {
     vec3 position;
     vec3 normal;
@@ -14,7 +14,9 @@ struct scene {
 
   vector<vertex> vertices{};
   vector<face> faces{};
+};
 
+struct scene : basic_scene {
   void setup() noexcept {
     device_handle.bind();
     device_vertices.bind();
