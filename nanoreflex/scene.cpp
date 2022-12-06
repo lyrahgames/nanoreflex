@@ -92,23 +92,6 @@ bool basic_scene::has_boundary() const noexcept {
   return false;
 }
 
-auto basic_scene::intersection(const ray& r) const noexcept
-    -> ray_intersection {
-  ray_intersection result{};
-  result.t = infinity;
-  for (size_t i = 0; i < faces.size(); ++i) {
-    const auto& v = vertices;
-    const auto& f = faces[i];
-    if (const auto intersection = nanoreflex::intersection(
-            r, {v[f[0]].position, v[f[1]].position, v[f[2]].position})) {
-      if (intersection.t >= result.t) continue;
-      static_cast<ray_triangle_intersection&>(result) = intersection;
-      result.f = i;
-    }
-  }
-  return result;
-}
-
 stl_binary_format::stl_binary_format(czstring file_path) {
   fstream file{file_path, ios::in | ios::binary};
   if (!file.is_open()) throw runtime_error("Failed to open given STL file.");

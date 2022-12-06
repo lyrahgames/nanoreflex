@@ -1,5 +1,5 @@
 #pragma once
-#include <nanoreflex/utility.hpp>
+#include <nanoreflex/scene.hpp>
 
 namespace nanoreflex {
 
@@ -7,6 +7,8 @@ struct ray {
   vec3 origin;
   vec3 direction;
 };
+
+struct triangle : array<vec3, 3> {};
 
 struct ray_triangle_intersection {
   operator bool() const noexcept {
@@ -18,20 +20,17 @@ struct ray_triangle_intersection {
   float t{};
 };
 
-inline auto intersection(const ray& r, const array<vec3, 3>& triangle) noexcept
-    -> ray_triangle_intersection {
-  const auto edge1 = triangle[1] - triangle[0];
-  const auto edge2 = triangle[2] - triangle[0];
-  const auto p = cross(r.direction, edge2);
-  const auto determinant = dot(edge1, p);
-  if (0.0f == determinant) return {};
-  const auto inverse_determinant = 1.0f / determinant;
-  const auto s = r.origin - triangle[0];
-  float u = dot(s, p) * inverse_determinant;
-  const auto q = cross(s, edge1);
-  float v = dot(r.direction, q) * inverse_determinant;
-  float t = dot(edge2, q) * inverse_determinant;
-  return {u, v, t};
-}
+auto intersection(const ray& r, const triangle& f) noexcept
+    -> ray_triangle_intersection;
+
+struct ray_scene_intersection : ray_triangle_intersection {
+  // We overwrite the check,
+  // because it the triangle will already have been checked.
+  operator bool() const noexcept { return f != -1; }
+  uint32_t f = -1;
+};
+
+auto intersection(const ray& r, const basic_scene& scene) noexcept
+    -> ray_scene_intersection;
 
 }  // namespace nanoreflex

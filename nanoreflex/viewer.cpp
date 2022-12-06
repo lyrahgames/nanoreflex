@@ -258,14 +258,10 @@ void viewer::load_selection_shader(czstring path) {
 }
 
 void viewer::select_face(float x, float y) {
-  // cout << "select_face(" << x << ", " << y << ")" << endl;
-  const auto r = cam.primary_ray(x, y);
-  const auto p = surface.intersection(r);
-  if (p) {
+  if (const auto p = intersection(cam.primary_ray(x, y), surface)) {
     const auto& f = surface.faces[p.f];
     array<uint32, 6> lines{f[0], f[1], f[1], f[2], f[2], f[0]};
     selection.allocate_and_initialize(lines);
-    // cout << "selection updated" << endl;
   }
 }
 

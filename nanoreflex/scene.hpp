@@ -1,6 +1,5 @@
 #pragma once
 #include <nanoreflex/opengl/opengl.hpp>
-#include <nanoreflex/ray_tracer.hpp>
 
 namespace nanoreflex {
 
@@ -12,13 +11,6 @@ struct basic_scene {
 
   struct face : array<uint32, 3> {};
 
-  struct ray_intersection : ray_triangle_intersection {
-    // We overwrite the check,
-    // because it the triangle will already have been checked.
-    operator bool() const noexcept { return f != -1; }
-    uint32_t f = -1;
-  };
-
   void clear() noexcept;
   void generate_normals() noexcept;
   void generate_edges();
@@ -26,8 +18,6 @@ struct basic_scene {
   void orient() noexcept;
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
-
-  auto intersection(const ray& r) const noexcept -> ray_intersection;
 
   vector<vertex> vertices{};
   vector<face> faces{};
