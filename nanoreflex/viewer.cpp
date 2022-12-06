@@ -52,6 +52,11 @@ void viewer::resize(int width, int height) {
 }
 
 void viewer::process_events() {
+  // Get new mouse position and compute movement in space.
+  const auto new_mouse_pos = sf::Mouse::getPosition(window);
+  const auto mouse_move = new_mouse_pos - mouse_pos;
+  mouse_pos = new_mouse_pos;
+
   sf::Event event;
   while (window.pollEvent(event)) {
     if (event.type == sf::Event::Closed)
@@ -74,14 +79,12 @@ void viewer::process_events() {
         case sf::Keyboard::Num2:
           set_z_as_up();
           break;
+        case sf::Keyboard::Space:
+          select_face(mouse_pos.x, mouse_pos.y);
+          break;
       }
     }
   }
-
-  // Get new mouse position and compute movement in space.
-  const auto new_mouse_pos = sf::Mouse::getPosition(window);
-  const auto mouse_move = new_mouse_pos - mouse_pos;
-  mouse_pos = new_mouse_pos;
 
   if (window.hasFocus()) {
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
@@ -109,6 +112,11 @@ void viewer::update_view() {
   surface_shader  //
       .set("projection", cam.projection_matrix())
       .set("view", cam.view_matrix());
+
+  selection_shader.bind();
+  selection_shader  //
+      .set("projection", cam.projection_matrix())
+      .set("view", cam.view_matrix());
 }
 
 void viewer::update() {
@@ -116,13 +124,27 @@ void viewer::update() {
     if (future_status::ready == loading_task.wait_for(0s)) {
       surface.update();
       fit_view();
+
+      vector<uint32> lines{};
+      for (const auto& [e, insertions] : surface.edges) {
+        if (insertions == 1) continue;
+        // if (surface.edges.contains(pair{e.second, e.first}) || (insertions > 1))
+        //   continue;
+        lines.push_back(e.first);
+        lines.push_back(e.second);
+      }
+      selection.allocate_and_initialize(lines);
+
       loading_task = {};
 
       cout << "done." << endl
            << "vertices = " << surface.vertices.size() << '\n'
            << "faces = " << surface.faces.size() << '\n'
            << "oriented = " << boolalpha << surface.oriented() << '\n'
+           << "boundary = " << boolalpha << surface.has_boundary() << '\n'
            << endl;
+
+      cout << "unoriented edges = " << lines.size() << endl;
     } else {
       cout << "." << flush;
     }
@@ -136,8 +158,16 @@ void viewer::update() {
 
 void viewer::render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glDepthFunc(GL_LESS);
   surface_shader.bind();
   surface.render();
+
+  glDepthFunc(GL_ALWAYS);
+  selection_shader.bind();
+  surface.device_handle.bind();
+  selection.bind();
+  glDrawElements(GL_LINES, selection.size(), GL_UNSIGNED_INT, 0);
 }
 
 void viewer::run() {
@@ -188,6 +218,8 @@ void viewer::load_scene(czstring file_path) {
   const auto loader = [this](czstring file_path) {
     load_from_file(file_path, surface);
     surface.generate_edges();
+    surface.generate_vertex_neighbors();
+    // surface.orient();
   };
   loading_task = async(launch::async, loader, file_path);
   cout << "Loading '" << file_path << "'" << flush;
@@ -218,6 +250,23 @@ void viewer::load_shader(czstring path) {
 void viewer::reload_shader() {
   if (surface_shader_path.empty()) return;
   load_shader(surface_shader_path.c_str());
+}
+
+void viewer::load_selection_shader(czstring path) {
+  selection_shader = opengl::shader_from_file(path);
+  view_should_update = true;
+}
+
+void viewer::select_face(float x, float y) {
+  // cout << "select_face(" << x << ", " << y << ")" << endl;
+  const auto r = cam.primary_ray(x, y);
+  const auto p = surface.intersection(r);
+  if (p) {
+    const auto& f = surface.faces[p.f];
+    array<uint32, 6> lines{f[0], f[1], f[1], f[2], f[2], f[0]};
+    selection.allocate_and_initialize(lines);
+    // cout << "selection updated" << endl;
+  }
 }
 
 }  // namespace nanoreflex

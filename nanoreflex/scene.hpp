@@ -1,6 +1,6 @@
 #pragma once
 #include <nanoreflex/opengl/opengl.hpp>
-#include <nanoreflex/utility.hpp>
+#include <nanoreflex/ray_tracer.hpp>
 
 namespace nanoreflex {
 
@@ -12,20 +12,35 @@ struct basic_scene {
 
   struct face : array<uint32, 3> {};
 
+  struct ray_intersection : ray_triangle_intersection {
+    // We overwrite the check,
+    // because it the triangle will already have been checked.
+    operator bool() const noexcept { return f != -1; }
+    uint32_t f = -1;
+  };
+
   void clear() noexcept;
+  void generate_normals() noexcept;
+  void generate_edges();
+  void generate_vertex_neighbors() noexcept;
+  void orient() noexcept;
+  bool oriented() const noexcept;
+  bool has_boundary() const noexcept;
+
+  auto intersection(const ray& r) const noexcept -> ray_intersection;
 
   vector<vertex> vertices{};
   vector<face> faces{};
-
-  void generate_edges();
-
-  bool oriented() const noexcept;
 
   static constexpr auto pair_hasher = [](const auto& x) {
     return (x.first << 7) ^ x.second;
   };
 
   unordered_map<pair<size_t, size_t>, int, decltype(pair_hasher)> edges{};
+
+  vector<size_t> vertex_neighbor_offset{};
+  vector<size_t> vertex_neighbors{};
+  vector<bool> is_boundary_vertex{};
 };
 
 struct stl_binary_format {
@@ -76,6 +91,7 @@ struct scene : basic_scene {
 
   void render() const noexcept {
     device_handle.bind();
+    device_faces.bind();
     glDrawElements(GL_TRIANGLES, 3 * faces.size(), GL_UNSIGNED_INT, 0);
   }
 

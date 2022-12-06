@@ -22,6 +22,7 @@
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 //
 #include <SFML/Graphics.hpp>
@@ -46,5 +47,6 @@ using real = float;
 using czstring = const char*;
 
 constexpr auto pi = std::numbers::pi_v<real>;
+constexpr auto infinity = std::numeric_limits<real>::infinity();
 
 }  // namespace nanoreflex

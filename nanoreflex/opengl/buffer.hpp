@@ -42,8 +42,10 @@ struct buffer_handle : object_handle {
                                    size * sizeof(data[0]));
   }
 
-  auto allocate_and_initialize(
-      const generic::transferable auto& value) const noexcept -> binded_handle {
+  template <generic::transferable type>
+  requires(!ranges::contiguous_range<type>)  //
+      auto allocate_and_initialize(const type& value) const noexcept
+      -> binded_handle {
     return allocate_and_initialize(&value, 1);
   }
 

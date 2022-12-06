@@ -1,5 +1,5 @@
 #pragma once
-#include <nanoreflex/utility.hpp>
+#include <nanoreflex/ray_tracer.hpp>
 
 namespace nanoreflex {
 
@@ -58,6 +58,13 @@ class camera {
   auto viewport_matrix() const noexcept {
     return scale(  //
         mat4{1.0f}, {screen_width() / 2.0f, screen_height() / 2.0f, 1.0f});
+  }
+
+  auto primary_ray(float x, float y) const noexcept -> ray {
+    return ray{position(),
+               normalize(direction() +
+                         pixel_size() * ((x - 0.5f * screen_width()) * right() +
+                                         (0.5f * screen_height() - y) * up()))};
   }
 
   constexpr auto set_screen_resolution(int w, int h) noexcept -> camera& {

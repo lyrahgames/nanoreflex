@@ -38,6 +38,10 @@ class viewer : viewer_context {
   void load_shader(czstring path);
   void reload_shader();
 
+  void load_selection_shader(czstring path);
+
+  void select_face(float x, float y);
+
  private:
   sf::Vector2i mouse_pos{};
   bool running = false;
@@ -57,8 +61,10 @@ class viewer : viewer_context {
   camera cam{};
 
   scene surface{};
-  basic_scene loading_surface{};
   future<void> loading_task{};
+
+  opengl::element_buffer selection{};
+  opengl::shader_program selection_shader{};
 
   vec3 aabb_min{};
   vec3 aabb_max{};
