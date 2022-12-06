@@ -1,8 +1,4 @@
 #include <nanoreflex/viewer.hpp>
-//
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-#include <assimp/Importer.hpp>
 
 namespace nanoreflex {
 
@@ -125,6 +121,7 @@ void viewer::update() {
       cout << "done." << endl
            << "vertices = " << surface.vertices.size() << '\n'
            << "faces = " << surface.faces.size() << '\n'
+           << "oriented = " << boolalpha << surface.oriented() << '\n'
            << endl;
     } else {
       cout << "." << flush;
@@ -189,61 +186,11 @@ void viewer::set_y_as_up() {
 
 void viewer::load_scene(czstring file_path) {
   const auto loader = [this](czstring file_path) {
-    Assimp::Importer importer{};
-
-    importer.SetPropertyInteger(
-        AI_CONFIG_PP_RVC_FLAGS,
-        aiComponent_NORMALS | aiComponent_TANGENTS_AND_BITANGENTS |
-            aiComponent_COLORS | aiComponent_TEXCOORDS |
-            aiComponent_BONEWEIGHTS | aiComponent_ANIMATIONS |
-            aiComponent_TEXTURES | aiComponent_LIGHTS |
-            aiComponent_CAMERAS /*| aiComponent_MESHES*/ |
-            aiComponent_MATERIALS);
-
-    const auto post_processing =
-        aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals |
-        aiProcess_JoinIdenticalVertices | aiProcess_RemoveComponent |
-        aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph |
-        aiProcess_FindDegenerates | aiProcess_DropNormals;
-
-    const auto raw = importer.ReadFile(file_path, post_processing);
-
-    if (!raw || raw->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !raw->mRootNode)
-      throw runtime_error(string("Failed to load surface from file '") +
-                          file_path + "'.");
-
-    if (raw->mNumMeshes > 1)
-      throw runtime_error("Failed to transform surface to a single mesh.");
-
-    surface.vertices.resize(raw->mMeshes[0]->mNumVertices);
-    for (size_t i = 0; i < surface.vertices.size(); ++i) {
-      surface.vertices[i].position = {raw->mMeshes[0]->mVertices[i].x,  //
-                                      raw->mMeshes[0]->mVertices[i].y,  //
-                                      raw->mMeshes[0]->mVertices[i].z};
-      surface.vertices[i].normal = {raw->mMeshes[0]->mNormals[i].x,  //
-                                    raw->mMeshes[0]->mNormals[i].y,  //
-                                    raw->mMeshes[0]->mNormals[i].z};
-    }
-
-    surface.faces.resize(raw->mMeshes[0]->mNumFaces);
-    for (size_t i = 0; i < surface.faces.size(); ++i) {
-      assert(raw->mMeshes[0]->mFaces[i].mNumIndices == 3);
-      for (size_t j = 0; j < 3; j++)
-        surface.faces[i][j] = raw->mMeshes[0]->mFaces[i].mIndices[j];
-    }
+    load_from_file(file_path, surface);
+    surface.generate_edges();
   };
-
-  // loader(file_path);
-
   loading_task = async(launch::async, loader, file_path);
   cout << "Loading '" << file_path << "'" << flush;
-
-  // surface.update();
-  // fit_view();
-
-  // cout << "vertices = " << surface.vertices.size() << '\n'
-  //      << "faces = " << surface.faces.size() << '\n'
-  //      << endl;
 }
 
 void viewer::fit_view() {
