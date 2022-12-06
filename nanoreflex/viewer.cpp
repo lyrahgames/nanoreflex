@@ -126,12 +126,10 @@ void viewer::update() {
       fit_view();
 
       vector<uint32> lines{};
-      for (const auto& [e, insertions] : surface.edges) {
-        if (insertions == 1) continue;
-        // if (surface.edges.contains(pair{e.second, e.first}) || (insertions > 1))
-        //   continue;
-        lines.push_back(e.first);
-        lines.push_back(e.second);
+      for (const auto& [e, info] : surface.edges) {
+        if (info.oriented()) continue;
+        lines.push_back(e[0]);
+        lines.push_back(e[1]);
       }
       selection.allocate_and_initialize(lines);
 

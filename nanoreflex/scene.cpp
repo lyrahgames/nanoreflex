@@ -6,6 +6,17 @@
 
 namespace nanoreflex {
 
+void basic_scene::edge::info::add_face(uint32 f) {
+  if (face[0] == invalid)
+    face[0] = f;
+  else if (face[1] == invalid)
+    face[1] = f;
+  else
+    throw runtime_error(
+        "Failed to add face to edge. Additional face would violate "
+        "requirements for a two-dimensional manifold.");
+}
+
 void basic_scene::clear() noexcept {
   vertices.clear();
   faces.clear();
@@ -28,25 +39,24 @@ void basic_scene::generate_edges() {
   edges.clear();
   for (size_t i = 0; i < faces.size(); ++i) {
     const auto& f = faces[i];
-    ++edges[pair{f[0], f[1]}];
-    ++edges[pair{f[1], f[2]}];
-    ++edges[pair{f[2], f[0]}];
+    edges[edge{f[0], f[1]}].add_face(i);
+    edges[edge{f[1], f[2]}].add_face(i);
+    edges[edge{f[2], f[0]}].add_face(i);
   }
 }
 
 void basic_scene::generate_vertex_neighbors() noexcept {
   // Generate undirected edges.
-  unordered_set<pair<size_t, size_t>, decltype(pair_hasher)> undirected_edges{};
+  unordered_set<edge, edge::hasher> undirected_edges{};
   for (const auto& [e, _] : edges)
-    undirected_edges.insert(
-        pair{std::min(e.first, e.second), std::max(e.first, e.second)});
+    undirected_edges.insert(edge{std::min(e[0], e[1]), std::max(e[0], e[1])});
 
   // Count neighbors of each vertex.
   vertex_neighbor_offset.resize(vertices.size() + 1);
   vertex_neighbor_offset[0] = 0;
   for (const auto& e : undirected_edges) {
-    ++vertex_neighbor_offset[e.first + 1];
-    ++vertex_neighbor_offset[e.second + 1];
+    ++vertex_neighbor_offset[e[0] + 1];
+    ++vertex_neighbor_offset[e[1] + 1];
   }
   // Compute cumulative sum to generate neighbor offsets.
   for (size_t i = 2; i <= vertices.size(); ++i)
@@ -56,39 +66,24 @@ void basic_scene::generate_vertex_neighbors() noexcept {
   vector<size_t> neighbor_count(vertices.size(), 0);
   vertex_neighbors.resize(vertex_neighbor_offset.back());
   for (const auto& e : undirected_edges) {
-    vertex_neighbors[vertex_neighbor_offset[e.first] +
-                     neighbor_count[e.first]++] = e.second;
-    vertex_neighbors[vertex_neighbor_offset[e.second] +
-                     neighbor_count[e.second]++] = e.first;
+    vertex_neighbors[vertex_neighbor_offset[e[0]] + neighbor_count[e[0]]++] =
+        e[1];
+    vertex_neighbors[vertex_neighbor_offset[e[1]] + neighbor_count[e[1]]++] =
+        e[0];
   }
 }
 
-void basic_scene::orient() noexcept {
-  for (auto& f : faces) {
-    if (edges.contains(pair{f[1], f[0]}) ||  //
-        edges.contains(pair{f[2], f[1]}) ||  //
-        edges.contains(pair{f[0], f[2]}))
-      continue;
-    --edges[pair{f[0], f[1]}];
-    --edges[pair{f[1], f[2]}];
-    --edges[pair{f[2], f[0]}];
-    swap(f[1], f[2]);
-    ++edges[pair{f[0], f[1]}];
-    ++edges[pair{f[1], f[2]}];
-    ++edges[pair{f[2], f[0]}];
-  }
-}
+void basic_scene::generate_face_neighbors() noexcept {}
 
 bool basic_scene::oriented() const noexcept {
-  for (auto& [e, insertions] : edges)
-    if (insertions != 1) return false;
+  for (auto& [e, info] : edges)
+    if (!info.oriented()) return false;
   return true;
 }
 
 bool basic_scene::has_boundary() const noexcept {
-  for (auto& [e, insertions] : edges)
-    if (!edges.contains(pair{e.second, e.first}) && (insertions == 1))
-      return true;
+  for (auto& [e, info] : edges)
+    if (!edges.contains(edge{e[1], e[0]}) && info.oriented()) return true;
   return false;
 }
 

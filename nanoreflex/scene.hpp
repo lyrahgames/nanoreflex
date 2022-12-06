@@ -4,9 +4,25 @@
 namespace nanoreflex {
 
 struct basic_scene {
+  static constexpr uint32 invalid = -1;
+
   struct vertex {
     vec3 position;
     vec3 normal;
+  };
+
+  struct edge : array<uint32, 2> {
+    struct info {
+      bool oriented() const noexcept { return face[1] == invalid; }
+      void add_face(uint32 f);
+      uint32 face[2]{invalid, invalid};
+    };
+
+    struct hasher {
+      auto operator()(const edge& e) const noexcept -> size_t {
+        return (size_t(e[0]) << 7) ^ size_t(e[1]);
+      }
+    };
   };
 
   struct face : array<uint32, 3> {};
@@ -15,22 +31,20 @@ struct basic_scene {
   void generate_normals() noexcept;
   void generate_edges();
   void generate_vertex_neighbors() noexcept;
-  void orient() noexcept;
+  void generate_face_neighbors() noexcept;
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
 
   vector<vertex> vertices{};
   vector<face> faces{};
 
-  static constexpr auto pair_hasher = [](const auto& x) {
-    return (x.first << 7) ^ x.second;
-  };
-
-  unordered_map<pair<size_t, size_t>, int, decltype(pair_hasher)> edges{};
+  unordered_map<edge, edge::info, edge::hasher> edges{};
 
   vector<size_t> vertex_neighbor_offset{};
-  vector<size_t> vertex_neighbors{};
+  vector<uint32> vertex_neighbors{};
   vector<bool> is_boundary_vertex{};
+
+  vector<array<uint32, 3>> face_neighbors{};
 };
 
 struct stl_binary_format {
