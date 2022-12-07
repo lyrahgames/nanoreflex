@@ -64,15 +64,15 @@ class viewer : viewer_context {
   scene surface{};
   future<void> loading_task{};
 
-  opengl::element_buffer selection{};
-  opengl::shader_program selection_shader{};
-
   vec3 aabb_min{};
   vec3 aabb_max{};
   float bounding_radius;
 
   opengl::shader_program surface_shader{};
   string surface_shader_path{};
+
+  opengl::element_buffer selection{};
+  opengl::shader_program selection_shader{};
 };
 
 }  // namespace nanoreflex

@@ -14,8 +14,9 @@ struct basic_scene {
   struct edge : array<uint32, 2> {
     struct info {
       bool oriented() const noexcept { return face[1] == invalid; }
-      void add_face(uint32 f);
+      void add_face(uint32 f, uint16 l);
       uint32 face[2]{invalid, invalid};
+      uint16 location[2];
     };
 
     struct hasher {

@@ -65,7 +65,13 @@ void viewer::process_events() {
       resize(event.size.width, event.size.height);
     else if (event.type == sf::Event::MouseWheelScrolled)
       zoom(0.1 * event.mouseWheelScroll.delta);
-    else if (event.type == sf::Event::KeyPressed) {
+    else if (event.type == sf::Event::MouseButtonPressed) {
+      switch (event.mouseButton.button) {
+        case sf::Mouse::Middle:
+          look_at(event.mouseButton.x, event.mouseButton.y);
+          break;
+      }
+    } else if (event.type == sf::Event::KeyPressed) {
       switch (event.key.code) {
         case sf::Keyboard::Escape:
           running = false;
@@ -80,8 +86,7 @@ void viewer::process_events() {
           set_z_as_up();
           break;
         case sf::Keyboard::Space:
-          // select_face(mouse_pos.x, mouse_pos.y);
-          look_at(mouse_pos.x, mouse_pos.y);
+          select_face(mouse_pos.x, mouse_pos.y);
           break;
       }
     }
@@ -227,6 +232,7 @@ void viewer::load_scene(czstring file_path) {
     load_from_file(file_path, surface);
     surface.generate_edges();
     surface.generate_vertex_neighbors();
+    surface.generate_face_neighbors();
     // surface.orient();
   };
   loading_task = async(launch::async, loader, file_path);

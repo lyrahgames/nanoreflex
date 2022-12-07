@@ -42,6 +42,7 @@ using namespace std;
 using namespace gl;
 using namespace glm;
 
+using uint16 = uint16_t;
 using uint32 = uint32_t;
 using real = float;
 using czstring = const char*;

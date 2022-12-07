@@ -6,12 +6,14 @@
 
 namespace nanoreflex {
 
-void basic_scene::edge::info::add_face(uint32 f) {
-  if (face[0] == invalid)
+void basic_scene::edge::info::add_face(uint32 f, uint16 l) {
+  if (face[0] == invalid) {
     face[0] = f;
-  else if (face[1] == invalid)
+    location[0] = l;
+  } else if (face[1] == invalid) {
     face[1] = f;
-  else
+    location[1] = l;
+  } else
     throw runtime_error(
         "Failed to add face to edge. Additional face would violate "
         "requirements for a two-dimensional manifold.");
@@ -39,9 +41,9 @@ void basic_scene::generate_edges() {
   edges.clear();
   for (size_t i = 0; i < faces.size(); ++i) {
     const auto& f = faces[i];
-    edges[edge{f[0], f[1]}].add_face(i);
-    edges[edge{f[1], f[2]}].add_face(i);
-    edges[edge{f[2], f[0]}].add_face(i);
+    edges[edge{f[0], f[1]}].add_face(i, 0);
+    edges[edge{f[1], f[2]}].add_face(i, 1);
+    edges[edge{f[2], f[0]}].add_face(i, 2);
   }
 }
 
@@ -73,7 +75,24 @@ void basic_scene::generate_vertex_neighbors() noexcept {
   }
 }
 
-void basic_scene::generate_face_neighbors() noexcept {}
+void basic_scene::generate_face_neighbors() noexcept {
+  face_neighbors.resize(faces.size());
+  for (const auto& [e, info] : edges) {
+    if (info.oriented()) {
+      const auto it = edges.find(edge{e[1], e[0]});
+      if (it == end(edges))
+        face_neighbors[info.face[0]][info.location[0]] = invalid;
+      else {
+        const auto& [e2, info2] = *it;
+        face_neighbors[info.face[0]][info.location[0]] = info2.face[0];
+        // face_neighbors[info2.face[0]][info2.location[0]] = info.face[0];
+      }
+    } else {
+      face_neighbors[info.face[0]][info.location[0]] = info.face[1];
+      face_neighbors[info.face[1]][info.location[1]] = info.face[0];
+    }
+  }
+}
 
 bool basic_scene::oriented() const noexcept {
   for (auto& [e, info] : edges)
