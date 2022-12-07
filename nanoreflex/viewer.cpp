@@ -80,7 +80,8 @@ void viewer::process_events() {
           set_z_as_up();
           break;
         case sf::Keyboard::Space:
-          select_face(mouse_pos.x, mouse_pos.y);
+          // select_face(mouse_pos.x, mouse_pos.y);
+          look_at(mouse_pos.x, mouse_pos.y);
           break;
       }
     }
@@ -88,7 +89,7 @@ void viewer::process_events() {
 
   if (window.hasFocus()) {
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-      turn({0.01 * mouse_move.x, 0.01 * mouse_move.y});
+      turn({-0.01 * mouse_move.x, 0.01 * mouse_move.y});
     if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
       shift({mouse_move.x, mouse_move.y});
   }
@@ -98,7 +99,7 @@ void viewer::update_view() {
   // Computer camera position by using spherical coordinates.
   // This transformation is a variation of the standard
   // called horizontal coordinates often used in astronomy.
-  auto p = cos(altitude) * sin(azimuth) * right -  //
+  auto p = cos(altitude) * sin(azimuth) * right +  //
            cos(altitude) * cos(azimuth) * front +  //
            sin(altitude) * up;
   p *= radius;
@@ -196,6 +197,15 @@ void viewer::shift(const vec2& pixels) {
 void viewer::zoom(float scale) {
   radius *= exp(-scale);
   view_should_update = true;
+}
+
+void viewer::look_at(float x, float y) {
+  const auto r = cam.primary_ray(x, y);
+  if (const auto p = intersection(r, surface)) {
+    origin = r(p.t);
+    radius = p.t;
+    view_should_update = true;
+  }
 }
 
 void viewer::set_z_as_up() {

@@ -4,6 +4,8 @@
 namespace nanoreflex {
 
 struct ray {
+  auto operator()(float t) const noexcept { return origin + t * direction; }
+
   vec3 origin;
   vec3 direction;
 };

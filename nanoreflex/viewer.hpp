@@ -28,6 +28,7 @@ class viewer : viewer_context {
   void turn(const vec2& angle);
   void shift(const vec2& pixels);
   void zoom(float scale);
+  void look_at(float x, float y);
 
   void set_z_as_up();
   void set_y_as_up();
