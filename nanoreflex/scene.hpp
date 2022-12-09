@@ -36,6 +36,8 @@ struct basic_scene {
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
 
+  void generate_cohomology_groups() noexcept;
+
   vector<vertex> vertices{};
   vector<face> faces{};
 
@@ -46,6 +48,9 @@ struct basic_scene {
   vector<bool> is_boundary_vertex{};
 
   vector<array<uint32, 3>> face_neighbors{};
+
+  vector<uint32> cohomology_groups{};
+  size_t cohomology_group_count = 0;
 };
 
 struct stl_binary_format {

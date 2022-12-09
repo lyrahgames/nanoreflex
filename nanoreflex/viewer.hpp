@@ -41,7 +41,11 @@ class viewer : viewer_context {
 
   void load_selection_shader(czstring path);
 
+  void update_selection();
   void select_face(float x, float y);
+  void expand_selection();
+
+  void select_cohomology_group();
 
  private:
   sf::Vector2i mouse_pos{};
@@ -73,6 +77,9 @@ class viewer : viewer_context {
 
   opengl::element_buffer selection{};
   opengl::shader_program selection_shader{};
+
+  vector<bool> selected_faces{};
+  uint32 group = 0;
 };
 
 }  // namespace nanoreflex

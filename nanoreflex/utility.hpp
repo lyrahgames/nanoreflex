@@ -15,6 +15,7 @@
 #include <iostream>
 #include <mutex>
 #include <numbers>
+#include <numeric>
 #include <ranges>
 #include <stdexcept>
 #include <string>

@@ -88,6 +88,20 @@ void viewer::process_events() {
         case sf::Keyboard::Space:
           select_face(mouse_pos.x, mouse_pos.y);
           break;
+        case sf::Keyboard::N:
+          expand_selection();
+          break;
+        case sf::Keyboard::S:
+          select_cohomology_group();
+          break;
+        case sf::Keyboard::X:
+          ++group;
+          select_cohomology_group();
+          break;
+        case sf::Keyboard::Y:
+          --group;
+          select_cohomology_group();
+          break;
       }
     }
   }
@@ -131,13 +145,13 @@ void viewer::update() {
       surface.update();
       fit_view();
 
-      vector<uint32> lines{};
-      for (const auto& [e, info] : surface.edges) {
-        if (info.oriented()) continue;
-        lines.push_back(e[0]);
-        lines.push_back(e[1]);
-      }
-      selection.allocate_and_initialize(lines);
+      // vector<uint32> lines{};
+      // for (const auto& [e, info] : surface.edges) {
+      //   if (info.oriented()) continue;
+      //   lines.push_back(e[0]);
+      //   lines.push_back(e[1]);
+      // }
+      // selection.allocate_and_initialize(lines);
 
       loading_task = {};
 
@@ -146,9 +160,10 @@ void viewer::update() {
            << "faces = " << surface.faces.size() << '\n'
            << "oriented = " << boolalpha << surface.oriented() << '\n'
            << "boundary = " << boolalpha << surface.has_boundary() << '\n'
+           << "cohomology groups = " << surface.cohomology_group_count << '\n'
            << endl;
 
-      cout << "unoriented edges = " << lines.size() << endl;
+      // cout << "unoriented edges = " << lines.size() << endl;
     } else {
       cout << "." << flush;
     }
@@ -167,11 +182,13 @@ void viewer::render() {
   surface_shader.bind();
   surface.render();
 
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDepthFunc(GL_ALWAYS);
   selection_shader.bind();
   surface.device_handle.bind();
   selection.bind();
-  glDrawElements(GL_LINES, selection.size(), GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void viewer::run() {
@@ -233,6 +250,7 @@ void viewer::load_scene(czstring file_path) {
     surface.generate_edges();
     surface.generate_vertex_neighbors();
     surface.generate_face_neighbors();
+    surface.generate_cohomology_groups();
     // surface.orient();
   };
   loading_task = async(launch::async, loader, file_path);
@@ -271,12 +289,41 @@ void viewer::load_selection_shader(czstring path) {
   view_should_update = true;
 }
 
+void viewer::update_selection() {
+  decltype(surface.faces) faces{};
+  for (size_t i = 0; i < selected_faces.size(); ++i)
+    if (selected_faces[i]) faces.push_back(surface.faces[i]);
+  selection.allocate_and_initialize(faces);
+}
+
 void viewer::select_face(float x, float y) {
+  selected_faces.resize(surface.faces.size());
+  for (size_t i = 0; i < selected_faces.size(); ++i) selected_faces[i] = false;
+
   if (const auto p = intersection(cam.primary_ray(x, y), surface)) {
-    const auto& f = surface.faces[p.f];
-    array<uint32, 6> lines{f[0], f[1], f[1], f[2], f[2], f[0]};
-    selection.allocate_and_initialize(lines);
+    selected_faces[p.f] = true;
+    update_selection();
   }
+}
+
+void viewer::expand_selection() {
+  auto new_selected_faces = selected_faces;
+  for (size_t i = 0; i < selected_faces.size(); ++i) {
+    if (!selected_faces[i]) continue;
+    for (int j = 0; j < 3; ++j) {
+      if (surface.face_neighbors[i][j] == scene::invalid) continue;
+      new_selected_faces[surface.face_neighbors[i][j]] = true;
+    }
+  }
+  swap(new_selected_faces, selected_faces);
+  update_selection();
+}
+
+void viewer::select_cohomology_group() {
+  selected_faces.resize(surface.faces.size());
+  for (size_t i = 0; i < surface.faces.size(); ++i)
+    selected_faces[i] = (surface.cohomology_groups[i] == group);
+  update_selection();
 }
 
 }  // namespace nanoreflex

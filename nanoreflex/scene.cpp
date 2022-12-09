@@ -106,6 +106,33 @@ bool basic_scene::has_boundary() const noexcept {
   return false;
 }
 
+void basic_scene::generate_cohomology_groups() noexcept {
+  cohomology_groups.resize(faces.size());
+  for (size_t i = 0; i < faces.size(); ++i) cohomology_groups[i] = invalid;
+
+  vector<uint32_t> face_stack{};
+  uint32 group = 0;
+
+  for (size_t fid = 0; fid < faces.size(); ++fid) {
+    if (cohomology_groups[fid] != invalid) continue;
+    face_stack.push_back(fid);
+    while (!face_stack.empty()) {
+      const auto f = face_stack.back();
+      face_stack.pop_back();
+      cohomology_groups[f] = group;
+      for (int i = 0; i < 3; ++i) {
+        const auto nid = face_neighbors[f][i];
+        if (nid == invalid) continue;
+        if (cohomology_groups[nid] != invalid) continue;
+        face_stack.push_back(nid);
+      }
+    }
+    ++group;
+  }
+
+  cohomology_group_count = group;
+}
+
 stl_binary_format::stl_binary_format(czstring file_path) {
   fstream file{file_path, ios::in | ios::binary};
   if (!file.is_open()) throw runtime_error("Failed to open given STL file.");
