@@ -36,7 +36,10 @@ struct basic_scene {
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
 
+  bool consistent() const noexcept;
+
   void generate_cohomology_groups() noexcept;
+  void orient() noexcept;
 
   vector<vertex> vertices{};
   vector<face> faces{};
@@ -51,6 +54,8 @@ struct basic_scene {
 
   vector<uint32> cohomology_groups{};
   size_t cohomology_group_count = 0;
+
+  vector<bool> orientation{};
 };
 
 struct stl_binary_format {

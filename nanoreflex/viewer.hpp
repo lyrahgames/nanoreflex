@@ -46,6 +46,7 @@ class viewer : viewer_context {
   void expand_selection();
 
   void select_cohomology_group();
+  void select_oriented_cohomology_group();
 
  private:
   sf::Vector2i mouse_pos{};
@@ -80,6 +81,9 @@ class viewer : viewer_context {
 
   vector<bool> selected_faces{};
   uint32 group = 0;
+  bool orientation = false;
+
+  opengl::element_buffer edge_selection{};
 };
 
 }  // namespace nanoreflex

@@ -27,12 +27,19 @@ void basic_scene::clear() noexcept {
 void basic_scene::generate_normals() noexcept {
   for (auto& v : vertices) v.normal = {};
   for (const auto& f : faces) {
-    const auto p = vertices[f[1]].position - vertices[f[0]].position;
-    const auto q = vertices[f[2]].position - vertices[f[0]].position;
-    const auto n = cross(p, q) / dot(p, p) / dot(q, q);
-    vertices[f[0]].normal += n;
-    vertices[f[1]].normal += n;
-    vertices[f[2]].normal += n;
+    for (int i = 0; i < 3; ++i) {
+      const auto p =
+          vertices[f[(i + 1) % 3]].position - vertices[f[i]].position;
+      const auto q =
+          vertices[f[(i + 2) % 3]].position - vertices[f[i]].position;
+
+      const auto lp = length(p);
+      const auto lq = length(q);
+      const auto np = p / lp;
+      const auto nq = q / lq;
+      const auto n = cross(np, nq) / lp / lq;
+      vertices[f[i]].normal += n;
+    }
   }
   for (auto& v : vertices) v.normal = normalize(v.normal);
 }
@@ -52,8 +59,8 @@ void basic_scene::generate_vertex_neighbors() noexcept {
   unordered_set<edge, edge::hasher> undirected_edges{};
   for (const auto& [e, _] : edges)
     undirected_edges.insert(edge{std::min(e[0], e[1]), std::max(e[0], e[1])});
-
   // Count neighbors of each vertex.
+  vertex_neighbor_offset.clear();
   vertex_neighbor_offset.resize(vertices.size() + 1);
   vertex_neighbor_offset[0] = 0;
   for (const auto& e : undirected_edges) {
@@ -66,6 +73,7 @@ void basic_scene::generate_vertex_neighbors() noexcept {
 
   // Assign neighbors to the pre-allocated neighbor vector.
   vector<size_t> neighbor_count(vertices.size(), 0);
+  // cout << "size = " << vertex_neighbor_offset.back() << endl;
   vertex_neighbors.resize(vertex_neighbor_offset.back());
   for (const auto& e : undirected_edges) {
     vertex_neighbors[vertex_neighbor_offset[e[0]] + neighbor_count[e[0]]++] =
@@ -106,8 +114,15 @@ bool basic_scene::has_boundary() const noexcept {
   return false;
 }
 
+bool basic_scene::consistent() const noexcept {
+  for (auto& [e, info] : edges)
+    if (!info.oriented() && edges.contains(edge{e[1], e[0]})) return false;
+  return true;
+}
+
 void basic_scene::generate_cohomology_groups() noexcept {
   cohomology_groups.resize(faces.size());
+  orientation.resize(faces.size());
   for (size_t i = 0; i < faces.size(); ++i) cohomology_groups[i] = invalid;
 
   vector<uint32_t> face_stack{};
@@ -116,21 +131,41 @@ void basic_scene::generate_cohomology_groups() noexcept {
   for (size_t fid = 0; fid < faces.size(); ++fid) {
     if (cohomology_groups[fid] != invalid) continue;
     face_stack.push_back(fid);
+    orientation[fid] = false;
     while (!face_stack.empty()) {
       const auto f = face_stack.back();
       face_stack.pop_back();
       cohomology_groups[f] = group;
+      const auto& face = faces[f];
       for (int i = 0; i < 3; ++i) {
         const auto nid = face_neighbors[f][i];
         if (nid == invalid) continue;
         if (cohomology_groups[nid] != invalid) continue;
         face_stack.push_back(nid);
+
+        if (edges[edge{face[i], face[(i + 1) % 3]}].oriented())
+          orientation[nid] = orientation[f];
+        else
+          orientation[nid] = !orientation[f];
       }
     }
     ++group;
   }
 
   cohomology_group_count = group;
+}
+
+void basic_scene::orient() noexcept {
+  for (size_t fid = 0; fid < faces.size(); ++fid) {
+    if (!orientation[fid]) continue;
+    auto& face = faces[fid];
+    swap(face[1], face[2]);
+  }
+  generate_normals();
+  generate_edges();
+  generate_vertex_neighbors();
+  generate_face_neighbors();
+  generate_cohomology_groups();
 }
 
 stl_binary_format::stl_binary_format(czstring file_path) {

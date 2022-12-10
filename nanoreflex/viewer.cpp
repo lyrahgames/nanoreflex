@@ -102,6 +102,10 @@ void viewer::process_events() {
           --group;
           select_cohomology_group();
           break;
+        case sf::Keyboard::O:
+          orientation = !orientation;
+          select_oriented_cohomology_group();
+          break;
       }
     }
   }
@@ -145,25 +149,29 @@ void viewer::update() {
       surface.update();
       fit_view();
 
-      // vector<uint32> lines{};
-      // for (const auto& [e, info] : surface.edges) {
-      //   if (info.oriented()) continue;
-      //   lines.push_back(e[0]);
-      //   lines.push_back(e[1]);
-      // }
-      // selection.allocate_and_initialize(lines);
+      vector<uint32> lines{};
+      for (const auto& [e, info] : surface.edges) {
+        if (info.oriented() || !surface.edges.contains({e[1], e[0]})) continue;
+        cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
+             << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0]
+             << '\n';
+        lines.push_back(e[0]);
+        lines.push_back(e[1]);
+      }
+      edge_selection.allocate_and_initialize(lines);
 
       loading_task = {};
 
       cout << "done." << endl
            << "vertices = " << surface.vertices.size() << '\n'
            << "faces = " << surface.faces.size() << '\n'
+           << "consistent = " << boolalpha << surface.consistent() << '\n'
            << "oriented = " << boolalpha << surface.oriented() << '\n'
            << "boundary = " << boolalpha << surface.has_boundary() << '\n'
            << "cohomology groups = " << surface.cohomology_group_count << '\n'
            << endl;
 
-      // cout << "unoriented edges = " << lines.size() << endl;
+      cout << "unoriented edges = " << lines.size() << endl;
     } else {
       cout << "." << flush;
     }
@@ -189,6 +197,9 @@ void viewer::render() {
   selection.bind();
   glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  edge_selection.bind();
+  glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
 }
 
 void viewer::run() {
@@ -323,6 +334,14 @@ void viewer::select_cohomology_group() {
   selected_faces.resize(surface.faces.size());
   for (size_t i = 0; i < surface.faces.size(); ++i)
     selected_faces[i] = (surface.cohomology_groups[i] == group);
+  update_selection();
+}
+
+void viewer::select_oriented_cohomology_group() {
+  selected_faces.resize(surface.faces.size());
+  for (size_t i = 0; i < surface.faces.size(); ++i)
+    selected_faces[i] = (surface.cohomology_groups[i] == group) &&
+                        (surface.orientation[i] == orientation);
   update_selection();
 }
 
