@@ -1,6 +1,7 @@
 #pragma once
 #include <nanoreflex/camera.hpp>
 #include <nanoreflex/opengl/opengl.hpp>
+#include <nanoreflex/points.hpp>
 #include <nanoreflex/scene.hpp>
 #include <nanoreflex/utility.hpp>
 
@@ -48,6 +49,12 @@ class viewer : viewer_context {
   void select_cohomology_group();
   void select_oriented_cohomology_group();
 
+  void reset_surface_curve_points();
+  void add_surface_curve_points(float x, float y);
+  void load_surface_curve_point_shader(czstring path);
+
+  void compute_surface_face_curve();
+
  private:
   sf::Vector2i mouse_pos{};
   bool running = false;
@@ -84,6 +91,16 @@ class viewer : viewer_context {
   bool orientation = false;
 
   opengl::element_buffer edge_selection{};
+
+  vector<ray_scene_intersection> surface_curve_intersections{};
+  points surface_curve_points{};
+  opengl::shader_program surface_curve_point_shader{};
+
+  vector<ray_scene_intersection> surface_face_curve_intersections{};
+
+  vector<uint32> curve_faces{};
+  vec2 curve_start, curve_end;
+  vector<float> curve_weights{};
 };
 
 }  // namespace nanoreflex

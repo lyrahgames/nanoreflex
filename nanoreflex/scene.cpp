@@ -168,6 +168,83 @@ void basic_scene::orient() noexcept {
   generate_cohomology_groups();
 }
 
+auto basic_scene::shortest_face_path(uint32 src, uint32 dst) const
+    -> vector<uint32> {
+  const auto barycenter = [&](uint32 fid) {
+    const auto& f = faces[fid];
+    return (vertices[f[0]].position + vertices[f[1]].position +
+            vertices[f[2]].position) /
+           3.0f;
+  };
+  const auto face_distance = [&](uint32 i, uint32 j) {
+    return glm::distance(barycenter(i), barycenter(j));
+  };
+
+  vector<bool> visited(faces.size(), false);
+
+  vector<float> distances(faces.size(), INFINITY);
+  distances[src] = 0;
+
+  vector<uint32> previous(faces.size());
+  previous[src] = src;
+
+  vector<uint32> queue{src};
+  const auto order = [&](uint32 i, uint32 j) {
+    return distances[i] > distances[j];
+  };
+
+  do {
+    ranges::make_heap(queue, order);
+    ranges::pop_heap(queue, order);
+    const auto current = queue.back();
+    queue.pop_back();
+
+    // cout << "current = " << current << endl;
+
+    visited[current] = true;
+
+    const auto neighbor_faces = face_neighbors[current];
+    for (int i = 0; i < 3; ++i) {
+      const auto neighbor = neighbor_faces[i];
+      if (visited[neighbor]) continue;
+
+      const auto d = face_distance(current, neighbor) + distances[current];
+      if (d >= distances[neighbor]) continue;
+
+      distances[neighbor] = d;
+      previous[neighbor] = current;
+      queue.push_back(neighbor);
+    }
+  } while (!queue.empty() && !visited[dst]);
+
+  if (queue.empty()) return {};
+
+  // Compute count and path.
+  uint32 count = 0;
+  for (auto i = dst; i != src; i = previous[i]) ++count;
+  vector<uint32> path(count);
+  for (auto i = dst; i != src; i = previous[i]) path[--count] = i;
+  return path;
+}
+
+auto basic_scene::position(uint32 fid, float u, float v) const -> vec3 {
+  const auto& f = faces[fid];
+  return vertices[f[0]].position * (1.0f - u - v) +  //
+         vertices[f[1]].position * u +               //
+         vertices[f[2]].position * v;
+}
+
+auto basic_scene::common_edge(uint32 fid1, uint32 fid2) const -> edge {
+  const auto& f1 = faces[fid1];
+  const auto& f2 = faces[fid2];
+
+  if (face_neighbors[fid2][0] == fid1) return {f2[0], f2[1]};
+  if (face_neighbors[fid2][1] == fid1) return {f2[1], f2[2]};
+  if (face_neighbors[fid2][2] == fid1) return {f2[2], f2[0]};
+
+  throw runtime_error("Triangles have no common edge.");
+}
+
 stl_binary_format::stl_binary_format(czstring file_path) {
   fstream file{file_path, ios::in | ios::binary};
   if (!file.is_open()) throw runtime_error("Failed to open given STL file.");

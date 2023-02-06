@@ -1,4 +1,6 @@
 #include <nanoreflex/viewer.hpp>
+//
+#include <nanoreflex/math.hpp>
 
 namespace nanoreflex {
 
@@ -38,6 +40,7 @@ viewer::viewer() : viewer_context() {
   glLineWidth(4.0f);
 
   surface.setup();
+  surface_curve_points.setup();
 }
 
 void viewer::resize() {
@@ -85,8 +88,12 @@ void viewer::process_events() {
         case sf::Keyboard::Num2:
           set_z_as_up();
           break;
+        case sf::Keyboard::Num0:
+          reset_surface_curve_points();
+          break;
         case sf::Keyboard::Space:
-          select_face(mouse_pos.x, mouse_pos.y);
+          // select_face(mouse_pos.x, mouse_pos.y);
+          // add_surface_curve_points(mouse_pos.x, mouse_pos.y);
           break;
         case sf::Keyboard::N:
           expand_selection();
@@ -106,6 +113,9 @@ void viewer::process_events() {
           orientation = !orientation;
           select_oriented_cohomology_group();
           break;
+        case sf::Keyboard::F:
+          compute_surface_face_curve();
+          break;
       }
     }
   }
@@ -115,6 +125,11 @@ void viewer::process_events() {
       turn({-0.01 * mouse_move.x, 0.01 * mouse_move.y});
     if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
       shift({mouse_move.x, mouse_move.y});
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+      if (mouse_move != sf::Vector2i{})
+        add_surface_curve_points(mouse_pos.x, mouse_pos.y);
+    }
   }
 }
 
@@ -139,6 +154,11 @@ void viewer::update_view() {
 
   selection_shader.bind();
   selection_shader  //
+      .set("projection", cam.projection_matrix())
+      .set("view", cam.view_matrix());
+
+  surface_curve_point_shader.bind();
+  surface_curve_point_shader  //
       .set("projection", cam.projection_matrix())
       .set("view", cam.view_matrix());
 }
@@ -200,6 +220,10 @@ void viewer::render() {
 
   edge_selection.bind();
   glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
+
+  surface_curve_point_shader.bind();
+  surface_curve_points.render();
+  glDrawArrays(GL_LINE_STRIP, 0, surface_curve_points.vertices.size());
 }
 
 void viewer::run() {
@@ -343,6 +367,93 @@ void viewer::select_oriented_cohomology_group() {
     selected_faces[i] = (surface.cohomology_groups[i] == group) &&
                         (surface.orientation[i] == orientation);
   update_selection();
+}
+
+void viewer::reset_surface_curve_points() {
+  surface_curve_points.vertices.clear();
+  surface_curve_points.update();
+  surface_curve_intersections.clear();
+}
+
+void viewer::add_surface_curve_points(float x, float y) {
+  const auto r = cam.primary_ray(x, y);
+  if (const auto p = intersection(r, surface)) {
+    surface_curve_points.vertices.push_back(r(p.t));
+    surface_curve_points.update();
+    surface_curve_intersections.push_back(p);
+  }
+}
+
+void viewer::load_surface_curve_point_shader(czstring path) {
+  surface_curve_point_shader = opengl::shader_from_file(path);
+  view_should_update = true;
+}
+
+void viewer::compute_surface_face_curve() {
+  surface_face_curve_intersections.clear();
+  if (surface_curve_intersections.empty()) return;
+
+  surface_face_curve_intersections.push_back(
+      surface_curve_intersections.front());
+  size_t count = 1;
+  for (size_t i = 1; i < surface_curve_intersections.size(); ++i) {
+    const auto& p = surface_curve_intersections[i];
+    auto& q = surface_face_curve_intersections.back();
+
+    if (p.f == q.f) {
+      q.u += p.u;
+      q.v += p.v;
+      ++count;
+      continue;
+    }
+
+    q.u /= count;
+    q.v /= count;
+
+    const auto path = surface.shortest_face_path(q.f, p.f);
+    for (auto x : path)
+      surface_face_curve_intersections.push_back(
+          {1.0f / 3.0f, 1.0f / 3.0f, 0.0f, x});
+    count = 1;
+    if (path.empty()) break;
+    surface_face_curve_intersections.back() = p;
+  }
+  surface_face_curve_intersections.back().u /= count;
+  surface_face_curve_intersections.back().v /= count;
+
+  // Provide discrete surface mesh curve.
+  curve_start = {surface_face_curve_intersections.front().u,
+                 surface_face_curve_intersections.front().v};
+  curve_end = {surface_face_curve_intersections.back().u,
+               surface_face_curve_intersections.back().v};
+  curve_faces.resize(surface_face_curve_intersections.size());
+  for (size_t i = 0; i < surface_face_curve_intersections.size(); ++i)
+    curve_faces[i] = surface_face_curve_intersections[i].f;
+  curve_weights.resize(surface_face_curve_intersections.size() - 1);
+  for (size_t i = 1; i < surface_face_curve_intersections.size(); ++i) {
+    const auto& p = surface_face_curve_intersections[i - 1];
+    const auto& q = surface_face_curve_intersections[i];
+    const auto e = surface.common_edge(p.f, q.f);
+    curve_weights[i - 1] = edge_weight(
+        surface.vertices[e[0]].position, surface.vertices[e[1]].position,
+        surface.position(p.f, p.u, p.v), surface.position(q.f, q.u, q.v));
+  }
+
+  // Update for Rendering
+  surface_curve_points.vertices.clear();
+  // for (const auto& p : surface_face_curve_intersections)
+  //   surface_curve_points.vertices.push_back(surface.position(p.f, p.u, p.v));
+  surface_curve_points.vertices.push_back(
+      surface.position(curve_faces.front(), curve_start.x, curve_start.y));
+  for (size_t i = 0; i < curve_faces.size() - 1; ++i) {
+    const auto e = surface.common_edge(curve_faces[i], curve_faces[i + 1]);
+    surface_curve_points.vertices.push_back(  //
+        surface.vertices[e[0]].position * (1.0f - curve_weights[i]) +
+        surface.vertices[e[1]].position * curve_weights[i]);
+  }
+  surface_curve_points.vertices.push_back(
+      surface.position(curve_faces.back(), curve_end.x, curve_end.y));
+  surface_curve_points.update();
 }
 
 }  // namespace nanoreflex
