@@ -43,10 +43,17 @@ using namespace std;
 using namespace gl;
 using namespace glm;
 
+using uint8 = uint8_t;
 using uint16 = uint16_t;
 using uint32 = uint32_t;
-using real = float;
+using uint64 = uint64_t;
+using float32 = float;
+using float64 = double;
+using real = float32;
 using czstring = const char*;
+
+using clock = chrono::high_resolution_clock;
+using chrono::duration;
 
 constexpr auto pi = std::numbers::pi_v<real>;
 constexpr auto infinity = std::numeric_limits<real>::infinity();

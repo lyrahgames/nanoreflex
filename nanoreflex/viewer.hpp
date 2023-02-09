@@ -2,6 +2,7 @@
 #include <nanoreflex/camera.hpp>
 #include <nanoreflex/opengl/opengl.hpp>
 #include <nanoreflex/points.hpp>
+// #include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/scene.hpp>
 #include <nanoreflex/utility.hpp>
 
@@ -34,8 +35,11 @@ class viewer : viewer_context {
   void set_z_as_up();
   void set_y_as_up();
 
-  void load_scene(czstring file_path);
+  void load_surface(const filesystem::path& path);
+  void handle_surface_load_task();
   void fit_view();
+
+  void print_surface_info();
 
   void load_shader(czstring path);
   void reload_shader();
@@ -74,8 +78,17 @@ class viewer : viewer_context {
 
   camera cam{};
 
+  // polyhedral_surface surface{};
   scene surface{};
-  future<void> loading_task{};
+
+  // The loading of mesh data can take quite a long time
+  // and may let the window manager think the program is frozen
+  // if the data would be loaded by a blocking call.
+  // Here, an asynchronous task is used
+  // to get rid of this unresponsiveness.
+  future<void> surface_load_task{};
+  float32 surface_load_time{};
+  float32 surface_process_time{};
 
   vec3 aabb_min{};
   vec3 aabb_max{};

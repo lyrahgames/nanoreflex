@@ -163,39 +163,7 @@ void viewer::update_view() {
 }
 
 void viewer::update() {
-  if (loading_task.valid()) {
-    if (future_status::ready == loading_task.wait_for(0s)) {
-      surface.update();
-      fit_view();
-
-      vector<uint32> lines{};
-      for (const auto& [e, info] : surface.edges) {
-        if (info.oriented() || !surface.edges.contains({e[1], e[0]})) continue;
-        cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
-             << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0]
-             << '\n';
-        lines.push_back(e[0]);
-        lines.push_back(e[1]);
-      }
-      edge_selection.allocate_and_initialize(lines);
-
-      loading_task = {};
-
-      cout << "done." << endl
-           << "vertices = " << surface.vertices.size() << '\n'
-           << "faces = " << surface.faces.size() << '\n'
-           << "consistent = " << boolalpha << surface.consistent() << '\n'
-           << "oriented = " << boolalpha << surface.oriented() << '\n'
-           << "boundary = " << boolalpha << surface.has_boundary() << '\n'
-           << "cohomology groups = " << surface.cohomology_group_count << '\n'
-           << endl;
-
-      cout << "unoriented edges = " << lines.size() << endl;
-    } else {
-      cout << "." << flush;
-    }
-  }
-
+  handle_surface_load_task();
   if (view_should_update) {
     update_view();
     view_should_update = false;
@@ -278,17 +246,48 @@ void viewer::set_y_as_up() {
   view_should_update = true;
 }
 
-void viewer::load_scene(czstring file_path) {
-  const auto loader = [this](czstring file_path) {
-    load_from_file(file_path, surface);
+void viewer::load_surface(const filesystem::path& path) {
+  const auto loader = [this](const filesystem::path& path) {
+    const auto start = clock::now();
+    surface.host() = polyhedral_surface::from(path);
+    const auto mid = clock::now();
     surface.generate_edges();
     surface.generate_vertex_neighbors();
     surface.generate_face_neighbors();
     surface.generate_cohomology_groups();
-    // surface.orient();
+    const auto end = clock::now();
+
+    // Evaluate loading and processing time.
+    surface_load_time = duration<float32>(mid - start).count();
+    surface_process_time = duration<float32>(end - mid).count();
   };
-  loading_task = async(launch::async, loader, file_path);
-  cout << "Loading '" << file_path << "'" << flush;
+  surface_load_task = async(launch::async, loader, path);
+  cout << "Loading " << path << flush;
+}
+
+void viewer::handle_surface_load_task() {
+  if (!surface_load_task.valid()) return;
+  if (future_status::ready != surface_load_task.wait_for(0s)) {
+    cout << "." << flush;
+    return;
+  }
+  cout << "done." << endl << '\n';
+  surface_load_task = {};
+
+  surface.update();
+  fit_view();
+  print_surface_info();
+
+  // vector<uint32> lines{};
+  // for (const auto& [e, info] : surface.edges) {
+  //   if (info.oriented() || !surface.edges.contains({e[1], e[0]})) continue;
+  //   cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
+  //        << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0] << '\n';
+  //   lines.push_back(e[0]);
+  //   lines.push_back(e[1]);
+  // }
+  // edge_selection.allocate_and_initialize(lines);
+  // cout << "unoriented edges = " << lines.size() << endl;
 }
 
 void viewer::fit_view() {
@@ -305,6 +304,30 @@ void viewer::fit_view() {
   radius = 0.5f * length(aabb_max - aabb_min) / tan(0.5f * cam.vfov());
   cam.set_near_and_far(1e-4f * radius, 2 * radius);
   view_should_update = true;
+}
+
+void viewer::print_surface_info() {
+  constexpr auto left_width = 20;
+  constexpr auto right_width = 10;
+  cout << setprecision(3) << fixed << boolalpha;
+  cout << setw(left_width) << "load time"
+       << " = " << setw(right_width) << surface_load_time << " s\n"
+       << setw(left_width) << "process time"
+       << " = " << setw(right_width) << surface_process_time << " s\n"
+       << '\n'
+       << setw(left_width) << "vertices"
+       << " = " << setw(right_width) << surface.vertices.size() << '\n'
+       << setw(left_width) << "faces"
+       << " = " << setw(right_width) << surface.faces.size() << '\n'
+       << setw(left_width) << "consistent"
+       << " = " << setw(right_width) << surface.consistent() << '\n'
+       << setw(left_width) << "oriented"
+       << " = " << setw(right_width) << surface.oriented() << '\n'
+       << setw(left_width) << "boundary"
+       << " = " << setw(right_width) << surface.has_boundary() << '\n'
+       << setw(left_width) << "cohomology groups"
+       << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
+       << endl;
 }
 
 void viewer::load_shader(czstring path) {
