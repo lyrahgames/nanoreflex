@@ -3,7 +3,7 @@
 
 namespace nanoreflex {
 
-struct basic_scene {
+struct polyhedral_surface {
   static constexpr uint32 invalid = -1;
 
   struct vertex {
@@ -85,11 +85,11 @@ struct stl_binary_format {
   vector<triangle> triangles{};
 };
 
-void transform(const stl_binary_format& stl_data, basic_scene& mesh);
+void transform(const stl_binary_format& stl_data, polyhedral_surface& mesh);
 
-void load_from_file(czstring file_path, basic_scene& mesh);
+void load_from_file(czstring file_path, polyhedral_surface& mesh);
 
-struct scene : basic_scene {
+struct scene : polyhedral_surface {
   void setup() noexcept {
     device_handle.bind();
     device_vertices.bind();

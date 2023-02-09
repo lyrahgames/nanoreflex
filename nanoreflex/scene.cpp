@@ -6,7 +6,7 @@
 
 namespace nanoreflex {
 
-void basic_scene::edge::info::add_face(uint32 f, uint16 l) {
+void polyhedral_surface::edge::info::add_face(uint32 f, uint16 l) {
   if (face[0] == invalid) {
     face[0] = f;
     location[0] = l;
@@ -19,12 +19,12 @@ void basic_scene::edge::info::add_face(uint32 f, uint16 l) {
         "requirements for a two-dimensional manifold.");
 }
 
-void basic_scene::clear() noexcept {
+void polyhedral_surface::clear() noexcept {
   vertices.clear();
   faces.clear();
 }
 
-void basic_scene::generate_normals() noexcept {
+void polyhedral_surface::generate_normals() noexcept {
   for (auto& v : vertices) v.normal = {};
   for (const auto& f : faces) {
     for (int i = 0; i < 3; ++i) {
@@ -44,7 +44,7 @@ void basic_scene::generate_normals() noexcept {
   for (auto& v : vertices) v.normal = normalize(v.normal);
 }
 
-void basic_scene::generate_edges() {
+void polyhedral_surface::generate_edges() {
   edges.clear();
   for (size_t i = 0; i < faces.size(); ++i) {
     const auto& f = faces[i];
@@ -54,7 +54,7 @@ void basic_scene::generate_edges() {
   }
 }
 
-void basic_scene::generate_vertex_neighbors() noexcept {
+void polyhedral_surface::generate_vertex_neighbors() noexcept {
   // Generate undirected edges.
   unordered_set<edge, edge::hasher> undirected_edges{};
   for (const auto& [e, _] : edges)
@@ -83,7 +83,7 @@ void basic_scene::generate_vertex_neighbors() noexcept {
   }
 }
 
-void basic_scene::generate_face_neighbors() noexcept {
+void polyhedral_surface::generate_face_neighbors() noexcept {
   face_neighbors.resize(faces.size());
   for (const auto& [e, info] : edges) {
     if (info.oriented()) {
@@ -102,25 +102,25 @@ void basic_scene::generate_face_neighbors() noexcept {
   }
 }
 
-bool basic_scene::oriented() const noexcept {
+bool polyhedral_surface::oriented() const noexcept {
   for (auto& [e, info] : edges)
     if (!info.oriented()) return false;
   return true;
 }
 
-bool basic_scene::has_boundary() const noexcept {
+bool polyhedral_surface::has_boundary() const noexcept {
   for (auto& [e, info] : edges)
     if (!edges.contains(edge{e[1], e[0]}) && info.oriented()) return true;
   return false;
 }
 
-bool basic_scene::consistent() const noexcept {
+bool polyhedral_surface::consistent() const noexcept {
   for (auto& [e, info] : edges)
     if (!info.oriented() && edges.contains(edge{e[1], e[0]})) return false;
   return true;
 }
 
-void basic_scene::generate_cohomology_groups() noexcept {
+void polyhedral_surface::generate_cohomology_groups() noexcept {
   cohomology_groups.resize(faces.size());
   orientation.resize(faces.size());
   for (size_t i = 0; i < faces.size(); ++i) cohomology_groups[i] = invalid;
@@ -155,7 +155,7 @@ void basic_scene::generate_cohomology_groups() noexcept {
   cohomology_group_count = group;
 }
 
-void basic_scene::orient() noexcept {
+void polyhedral_surface::orient() noexcept {
   for (size_t fid = 0; fid < faces.size(); ++fid) {
     if (!orientation[fid]) continue;
     auto& face = faces[fid];
@@ -168,7 +168,7 @@ void basic_scene::orient() noexcept {
   generate_cohomology_groups();
 }
 
-auto basic_scene::shortest_face_path(uint32 src, uint32 dst) const
+auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
     -> vector<uint32> {
   const auto barycenter = [&](uint32 fid) {
     const auto& f = faces[fid];
@@ -227,14 +227,14 @@ auto basic_scene::shortest_face_path(uint32 src, uint32 dst) const
   return path;
 }
 
-auto basic_scene::position(uint32 fid, float u, float v) const -> vec3 {
+auto polyhedral_surface::position(uint32 fid, float u, float v) const -> vec3 {
   const auto& f = faces[fid];
   return vertices[f[0]].position * (1.0f - u - v) +  //
          vertices[f[1]].position * u +               //
          vertices[f[2]].position * v;
 }
 
-auto basic_scene::common_edge(uint32 fid1, uint32 fid2) const -> edge {
+auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
   const auto& f1 = faces[fid1];
   const auto& f2 = faces[fid2];
 
@@ -269,7 +269,7 @@ stl_binary_format::stl_binary_format(czstring file_path) {
   }
 }
 
-void transform(const stl_binary_format& stl_data, basic_scene& mesh) {
+void transform(const stl_binary_format& stl_data, polyhedral_surface& mesh) {
   unordered_map<vec3, size_t, decltype([](const auto& v) -> size_t {
                   return (bit_cast<uint32_t>(v.x) << 11) ^
                          (bit_cast<uint32_t>(v.y) << 5) ^
@@ -283,7 +283,7 @@ void transform(const stl_binary_format& stl_data, basic_scene& mesh) {
   mesh.vertices.reserve(stl_data.triangles.size() / 2);
 
   for (size_t i = 0; i < stl_data.triangles.size(); ++i) {
-    basic_scene::face f{};
+    polyhedral_surface::face f{};
     const auto& normal = stl_data.triangles[i].normal;
     const auto& v = stl_data.triangles[i].vertex;
     for (size_t j = 0; j < 3; ++j) {
@@ -306,7 +306,7 @@ void transform(const stl_binary_format& stl_data, basic_scene& mesh) {
   mesh.generate_normals();
 }
 
-void load_from_file(czstring file_path, basic_scene& mesh) {
+void load_from_file(czstring file_path, polyhedral_surface& mesh) {
   const auto path = filesystem::path(file_path);
   if (!exists(path))
     throw runtime_error("Failed to load surface mesh from file '"s +

@@ -52,6 +52,7 @@ class viewer : viewer_context {
   void reset_surface_curve_points();
   void add_surface_curve_points(float x, float y);
   void load_surface_curve_point_shader(czstring path);
+  void compute_surface_curve_points();
 
   void compute_surface_face_curve();
 

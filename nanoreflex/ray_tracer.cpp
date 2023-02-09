@@ -18,13 +18,13 @@ auto intersection(const ray& r, const triangle& f) noexcept
   return {u, v, t};
 }
 
-auto intersection(const ray& r, const basic_scene& scene) noexcept
+auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
     -> ray_scene_intersection {
   ray_scene_intersection result{};
   result.t = infinity;
-  for (size_t i = 0; i < scene.faces.size(); ++i) {
-    const auto& v = scene.vertices;
-    const auto& f = scene.faces[i];
+  for (size_t i = 0; i < surface.faces.size(); ++i) {
+    const auto& v = surface.vertices;
+    const auto& f = surface.faces[i];
     if (const auto p = intersection(
             r, {v[f[0]].position, v[f[1]].position, v[f[2]].position})) {
       if (p.t >= result.t) continue;

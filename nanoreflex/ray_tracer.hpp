@@ -32,7 +32,7 @@ struct ray_scene_intersection : ray_triangle_intersection {
   uint32_t f = -1;
 };
 
-auto intersection(const ray& r, const basic_scene& scene) noexcept
+auto intersection(const ray& r, const polyhedral_surface& scene) noexcept
     -> ray_scene_intersection;
 
 }  // namespace nanoreflex
