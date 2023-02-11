@@ -80,7 +80,7 @@ void viewer::process_events() {
           running = false;
           break;
         case sf::Keyboard::R:
-          reload_shader();
+          reload_surface_shader();
           break;
         case sf::Keyboard::Num1:
           set_y_as_up();
@@ -167,6 +167,11 @@ void viewer::update() {
   if (view_should_update) {
     update_view();
     view_should_update = false;
+  }
+
+  if (surface_shader_time != last_changed(surface_shader_path)) {
+    info("Surface shader has changed on disk. Reloading triggered.");
+    reload_surface_shader();
   }
 }
 
@@ -330,15 +335,21 @@ void viewer::print_surface_info() {
        << endl;
 }
 
-void viewer::load_shader(czstring path) {
-  surface_shader = opengl::shader_from_file(path);
-  surface_shader_path = path;
-  view_should_update = true;
+void viewer::load_surface_shader(const filesystem::path& path) {
+  try {
+    surface_shader_time = last_changed(path);
+    surface_shader = opengl::shader_from_file(path);
+    surface_shader_path = path;
+    view_should_update = true;
+  } catch (runtime_error& e) {
+    error("Failed to load surface shader from path '"s + path.string() +
+          "'.\n" + e.what());
+  }
 }
 
-void viewer::reload_shader() {
+void viewer::reload_surface_shader() {
   if (surface_shader_path.empty()) return;
-  load_shader(surface_shader_path.c_str());
+  load_surface_shader(surface_shader_path);
 }
 
 void viewer::load_selection_shader(czstring path) {
@@ -433,105 +444,6 @@ void viewer::add_surface_curve_points(float x, float y) {
   const auto path = surface.shortest_face_path(fid, p.f);
 
   // Compute edge weights
-  // vector<float> weights(path.size());
-  // vector<vec2> unfold_left(path.size());
-  // vector<vec2> unfold_right(path.size());
-  // {
-  //   const auto e = surface.common_edge(fid, path[0]);
-  //   const auto en = normalize(surface.vertices[e[1]].position -
-  //                             surface.vertices[e[0]].position);
-  //   auto edge = en;
-  //   auto oid = e[0];
-  //   {
-  //     auto p = surface.position(fid, 1.0f / 3, 1.0f / 3);
-  //     const auto rp = p - surface.vertices[e[0]].position;
-  //     const auto px = dot(en, rp);
-  //     const auto py = -length(rp - px * e);
-  //     unfold_left[0] = {px, py};
-  //   }
-  //   for (size_t i = 1; i < path.size(); ++i) {
-  //     const auto e = surface.common_edge(path[i - 1], path[i]);
-  //     const auto en = normalize(surface.vertices[e[1]].position -
-  //                               surface.vertices[e[0]].position);
-
-  //     if (oid == e[0]) {  // left
-  //       const auto edge_x = dot(en, edge);
-  //       const auto edge_y = -length(edge - edge_x * en);
-  //       unfold_left[i] = {
-  //           edge_x * unfold_left[i - 1].x - edge_y * unfold_left[i - 1].y,  //
-  //           edge_y * unfold_left[i - 1].x + edge_x * unfold_left[i - 1].y};
-
-  //     } else {  // right
-  //       const auto shift =
-  //           surface.vertices[oid].position - surface.vertices[e[0]].position;
-  //       const auto shift_x = dot(en, shift);
-  //       const auto shift_y = -length(shift - shift_x * en);
-
-  //       const auto edge_x = dot(en, edge);
-  //       const auto edge_y = length(edge - edge_x * en);
-  //       unfold_left[i] = {edge_x * unfold_left[i - 1].x -
-  //                             edge_y * unfold_left[i - 1].y + shift_x,  //
-  //                         edge_y * unfold_left[i - 1].x +
-  //                             edge_x * unfold_left[i - 1].y + shift_y};
-  //     }
-
-  //     edge = en;
-  //     oid = e[0];
-  //   }
-  // }
-  // {
-  //   vec3 edge;
-  //   uint32_t oid;
-  //   for (size_t i = path.size() - 1; i > 0; --i) {
-  //     const auto e = surface.common_edge(path[i - 1], path[i]);
-  //     const auto en = normalize(surface.vertices[e[1]].position -
-  //                               surface.vertices[e[0]].position);
-
-  //     if (oid == e[0]) {  // left
-  //       const auto edge_x = dot(en, edge);
-  //       const auto edge_y = length(edge - edge_x * en);
-  //       unfold_right[i] = {
-  //           edge_x * unfold_right[i - 1].x - edge_y * unfold_right[i - 1].y,  //
-  //           edge_y * unfold_right[i - 1].x + edge_x * unfold_right[i - 1].y};
-
-  //     } else {  // right
-  //       const auto shift =
-  //           surface.vertices[oid].position - surface.vertices[e[0]].position;
-  //       const auto shift_x = dot(en, shift);
-  //       const auto shift_y = length(shift - shift_x * en);
-
-  //       const auto edge_x = dot(en, edge);
-  //       const auto edge_y = -length(edge - edge_x * en);
-  //       unfold_right[i] = {edge_x * unfold_right[i - 1].x -
-  //                              edge_y * unfold_right[i - 1].y + shift_x,  //
-  //                          edge_y * unfold_right[i - 1].x +
-  //                              edge_x * unfold_right[i - 1].y + shift_y};
-  //     }
-
-  //     edge = en;
-  //     oid = e[0];
-  //   }
-  // }
-
-  // for (size_t i = 0; i < path.size(); ++i) {
-  //   const auto w = 1.0f / (unfold_left[i].y + unfold_right[i].y);
-  //   const auto w1 = w * unfold_right[i].y;
-  //   const auto w2 = w * unfold_left[i].y;
-  //   const auto r = w1 * unfold_left[i].x + w2 * unfold_right[i].x;
-  //   weights[i] = std::clamp(r, 0.0f, 1.0f);
-  // }
-
-  // for (size_t i = 0; i < path.size(); ++i) {
-  //   if (remove_artifacts(path[i])) continue;
-  //   curve_faces.push_back(path[i]);
-  //   curve_weights.push_back(weights[i]);
-  // }
-  // for (auto x : path) {
-  //   if (remove_artifacts(x)) continue;
-  //   curve_faces.push_back(x);
-  //   curve_weights.push_back(0.5f);
-  // }
-
   if (path.size() == 1) {
     const auto fid1 = curve_faces.back();
     const auto fid2 = path[0];
@@ -642,136 +554,6 @@ void viewer::compute_surface_curve_points() {
 void viewer::load_surface_curve_point_shader(czstring path) {
   surface_curve_point_shader = opengl::shader_from_file(path);
   view_should_update = true;
-}
-
-void viewer::compute_surface_face_curve() {
-  // surface_face_curve_intersections.clear();
-  if (surface_curve_intersections.empty()) return;
-
-  // surface_face_curve_intersections.push_back(
-  //     surface_curve_intersections.front());
-
-  curve_faces.clear();
-  curve_weights.clear();
-
-  curve_faces.push_back(surface_curve_intersections.front().f);
-  curve_start = {1.0f / 3, 1.0f / 3};
-  curve_end = {1.0f / 3, 1.0f / 3};
-
-  // size_t count = 1;
-  // vec2 uv = curve_start;
-  // vec2 uv_old = uv;
-
-  const auto remove_artifacts = [&](uint32 f) {
-    const auto fid = curve_faces.back();
-    if (f == fid) return true;
-    if (curve_faces.size() >= 2) {
-      const auto fid2 = curve_faces[curve_faces.size() - 2];
-      if (f == fid2) {
-        curve_faces.pop_back();
-        curve_weights.pop_back();
-        return true;
-      }
-    }
-    return false;
-  };
-
-  for (size_t i = 1; i < surface_curve_intersections.size(); ++i) {
-    const auto& p = surface_curve_intersections[i];
-    const auto fid = curve_faces.back();
-
-    // if (p.f == fid) {
-    //   // uv.x += p.u;
-    //   // uv.y += p.v;
-    //   // ++count;
-    //   continue;
-    // }
-
-    // if (curve_faces.size() >= 2) {
-    //   const auto fid2 = curve_faces[curve_faces.size() - 2];
-    //   if (p.f == fid2) {
-    //     curve_faces.pop_back();
-    //     curve_weights.pop_back();
-    //     continue;
-    //   }
-    // }
-
-    if (remove_artifacts(p.f)) continue;
-
-    // uv.x /= count;
-    // uv.y /= count;
-    // const auto fid2 = curve_faces[curve_faces.size() - 2];
-    // const auto e = surface.common_edge(fid2, fid);
-    // curve_weights.push_back(edge_weight(
-    //     surface.vertices[e[0]].position, surface.vertices[e[1]].position,
-    //     surface.position(fid2, uv_old.x, uv_old.y),
-    //     surface.position(fid, uv.x, uv.y)));
-    // uv_old = uv;
-
-    const auto path = surface.shortest_face_path(fid, p.f);
-    for (auto x : path) {
-      if (remove_artifacts(x)) continue;
-      curve_faces.push_back(x);
-      curve_weights.push_back(0.5f);
-    }
-    if (path.empty()) break;
-
-    // auto& q = surface_face_curve_intersections.back();
-
-    // if (p.f == q.f) {
-    //   q.u += p.u;
-    //   q.v += p.v;
-    //   ++count;
-    //   continue;
-    // }
-
-    // q.u /= count;
-    // q.v /= count;
-
-    // const auto path = surface.shortest_face_path(q.f, p.f);
-    // for (auto x : path)
-    //   surface_face_curve_intersections.push_back(
-    //       {1.0f / 3.0f, 1.0f / 3.0f, 0.0f, x});
-    // count = 1;
-    // if (path.empty()) break;
-    // surface_face_curve_intersections.back() = p;
-  }
-  // surface_face_curve_intersections.back().u /= count;
-  // surface_face_curve_intersections.back().v /= count;
-
-  // Provide discrete surface mesh curve.
-  // curve_start = {surface_face_curve_intersections.front().u,
-  //                surface_face_curve_intersections.front().v};
-  // curve_end = {surface_face_curve_intersections.back().u,
-  //              surface_face_curve_intersections.back().v};
-  // curve_faces.resize(surface_face_curve_intersections.size());
-  // for (size_t i = 0; i < surface_face_curve_intersections.size(); ++i)
-  //   curve_faces[i] = surface_face_curve_intersections[i].f;
-  // curve_weights.resize(surface_face_curve_intersections.size() - 1);
-  // for (size_t i = 1; i < surface_face_curve_intersections.size(); ++i) {
-  //   const auto& p = surface_face_curve_intersections[i - 1];
-  //   const auto& q = surface_face_curve_intersections[i];
-  //   const auto e = surface.common_edge(p.f, q.f);
-  //   curve_weights[i - 1] = edge_weight(
-  //       surface.vertices[e[0]].position, surface.vertices[e[1]].position,
-  //       surface.position(p.f, p.u, p.v), surface.position(q.f, q.u, q.v));
-  // }
-
-  // Update for Rendering
-  surface_curve_points.vertices.clear();
-  // for (const auto& p : surface_face_curve_intersections)
-  //   surface_curve_points.vertices.push_back(surface.position(p.f, p.u, p.v));
-  surface_curve_points.vertices.push_back(
-      surface.position(curve_faces.front(), curve_start.x, curve_start.y));
-  for (size_t i = 0; i < curve_faces.size() - 1; ++i) {
-    const auto e = surface.common_edge(curve_faces[i], curve_faces[i + 1]);
-    surface_curve_points.vertices.push_back(  //
-        surface.vertices[e[0]].position * (1.0f - curve_weights[i]) +
-        surface.vertices[e[1]].position * curve_weights[i]);
-  }
-  surface_curve_points.vertices.push_back(
-      surface.position(curve_faces.back(), curve_end.x, curve_end.y));
-  surface_curve_points.update();
 }
 
 }  // namespace nanoreflex

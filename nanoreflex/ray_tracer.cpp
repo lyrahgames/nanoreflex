@@ -19,8 +19,8 @@ auto intersection(const ray& r, const triangle& f) noexcept
 }
 
 auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
-    -> ray_scene_intersection {
-  ray_scene_intersection result{};
+    -> ray_polyhedral_surface_intersection {
+  ray_polyhedral_surface_intersection result{};
   result.t = infinity;
   for (size_t i = 0; i < surface.faces.size(); ++i) {
     const auto& v = surface.vertices;

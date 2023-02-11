@@ -227,11 +227,23 @@ auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
   return path;
 }
 
-auto polyhedral_surface::position(uint32 fid, float u, float v) const -> vec3 {
+auto polyhedral_surface::position(vertex_id vid) const noexcept -> vec3 {
+  return vertices[vid].position;
+}
+
+auto polyhedral_surface::normal(vertex_id vid) const noexcept -> vec3 {
+  return vertices[vid].normal;
+}
+
+auto polyhedral_surface::position(edge e, real t) const noexcept -> vec3 {
+  return (real(1) - t) * position(e[0]) + t * position(e[1]);
+}
+
+auto polyhedral_surface::position(face_id fid, real u, real v) const noexcept
+    -> vec3 {
   const auto& f = faces[fid];
-  return vertices[f[0]].position * (1.0f - u - v) +  //
-         vertices[f[1]].position * u +               //
-         vertices[f[2]].position * v;
+  const auto w = real(1) - u - v;
+  return position(f[0]) * w + position(f[1]) * u + position(f[2]) * v;
 }
 
 auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {

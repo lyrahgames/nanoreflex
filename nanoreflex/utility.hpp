@@ -58,4 +58,11 @@ using chrono::duration;
 constexpr auto pi = std::numbers::pi_v<real>;
 constexpr auto infinity = std::numeric_limits<real>::infinity();
 
+inline auto last_changed(const filesystem::path& path) {
+  auto time = last_write_time(path);
+  for (const auto& entry : filesystem::recursive_directory_iterator(path))
+    time = std::max(time, entry.last_write_time());
+  return time;
+}
+
 }  // namespace nanoreflex

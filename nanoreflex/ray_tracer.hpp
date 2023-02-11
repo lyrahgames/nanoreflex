@@ -25,7 +25,7 @@ struct ray_triangle_intersection {
 auto intersection(const ray& r, const triangle& f) noexcept
     -> ray_triangle_intersection;
 
-struct ray_scene_intersection : ray_triangle_intersection {
+struct ray_polyhedral_surface_intersection : ray_triangle_intersection {
   // We overwrite the check,
   // because it the triangle will already have been checked.
   operator bool() const noexcept { return f != -1; }
@@ -33,6 +33,6 @@ struct ray_scene_intersection : ray_triangle_intersection {
 };
 
 auto intersection(const ray& r, const polyhedral_surface& scene) noexcept
-    -> ray_scene_intersection;
+    -> ray_polyhedral_surface_intersection;
 
 }  // namespace nanoreflex

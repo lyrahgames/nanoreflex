@@ -8,9 +8,16 @@
 
 namespace nanoreflex {
 
+// To be able to use OpenGL utilities
+// in the state of the Viewer,
+// an OpenGL context needs to be created first.
+// We enforce this by inheriting from the context structure.
 class viewer_context {
  public:
   viewer_context();
+
+  void info(const auto& data) { cout << "INFO:\n" << data << endl; }
+  void error(const auto& data) { cout << "ERROR:\n" << data << endl; }
 
  protected:
   sf::Window window{};
@@ -19,6 +26,7 @@ class viewer_context {
 class viewer : viewer_context {
  public:
   viewer();
+
   void resize();
   void resize(int width, int height);
   void process_events();
@@ -38,11 +46,10 @@ class viewer : viewer_context {
   void load_surface(const filesystem::path& path);
   void handle_surface_load_task();
   void fit_view();
-
   void print_surface_info();
 
-  void load_shader(czstring path);
-  void reload_shader();
+  void load_surface_shader(const filesystem::path& path);
+  void reload_surface_shader();
 
   void load_selection_shader(czstring path);
 
@@ -57,8 +64,6 @@ class viewer : viewer_context {
   void add_surface_curve_points(float x, float y);
   void load_surface_curve_point_shader(czstring path);
   void compute_surface_curve_points();
-
-  void compute_surface_face_curve();
 
  private:
   sf::Vector2i mouse_pos{};
@@ -89,13 +94,14 @@ class viewer : viewer_context {
   future<void> surface_load_task{};
   float32 surface_load_time{};
   float32 surface_process_time{};
-
+  //
   vec3 aabb_min{};
   vec3 aabb_max{};
   float bounding_radius;
-
+  //
   opengl::shader_program surface_shader{};
-  string surface_shader_path{};
+  filesystem::path surface_shader_path{};
+  filesystem::file_time_type surface_shader_time{};
 
   opengl::element_buffer selection{};
   opengl::shader_program selection_shader{};
@@ -106,11 +112,8 @@ class viewer : viewer_context {
 
   opengl::element_buffer edge_selection{};
 
-  vector<ray_scene_intersection> surface_curve_intersections{};
   points surface_curve_points{};
   opengl::shader_program surface_curve_point_shader{};
-
-  vector<ray_scene_intersection> surface_face_curve_intersections{};
 
   vector<uint32> curve_faces{};
   vec2 curve_start, curve_end;

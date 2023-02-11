@@ -4,11 +4,9 @@
 
 namespace nanoreflex::opengl {
 
-inline auto shader_from_file(czstring file_path) -> shader_program {
-  const auto path = filesystem::path(file_path);
-
+inline auto shader_from_file(const filesystem::path& path) -> shader_program {
   if (!is_directory(path))
-    throw runtime_error("Failed to load GLSL shader. Path '"s + file_path +
+    throw runtime_error("Failed to load GLSL shader. Path '"s + path.string() +
                         "' is not a directory.");
 
   const auto vs_path = path / "vs.glsl";
