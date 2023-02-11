@@ -164,7 +164,8 @@ void viewer::update_view() {
   shaders.apply([this](opengl::shader_program_handle shader) {
     shader.bind()
         .set("projection", cam.projection_matrix())
-        .set("view", cam.view_matrix());
+        .set("view", cam.view_matrix())
+        .try_set("viewport", cam.viewport_matrix());
   });
 }
 
@@ -183,7 +184,8 @@ void viewer::update() {
   shaders.reload([this](opengl::shader_program_handle shader) {
     shader.bind()
         .set("projection", cam.projection_matrix())
-        .set("view", cam.view_matrix());
+        .set("view", cam.view_matrix())
+        .try_set("viewport", cam.viewport_matrix());
   });
 }
 
@@ -193,6 +195,9 @@ void viewer::render() {
   glDepthFunc(GL_LESS);
   // surface_shader.bind();
   shaders.names["flat"]->second.shader.bind();
+  surface.render();
+
+  shaders.names["contours"]->second.shader.bind();
   surface.render();
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -206,7 +211,8 @@ void viewer::render() {
   edge_selection.bind();
   glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
 
-  surface_curve_point_shader.bind();
+  // surface_curve_point_shader.bind();
+  shaders.names["points"]->second.shader.bind();
   surface_curve_points.render();
   glDrawArrays(GL_LINE_STRIP, 0, surface_curve_points.vertices.size());
 }
