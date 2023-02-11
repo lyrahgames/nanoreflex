@@ -371,4 +371,9 @@ auto polyhedral_surface::from(const filesystem::path& path)
   return surface;
 }
 
+auto aabb_from(const polyhedral_surface& surface) noexcept -> aabb3 {
+  return aabb_from(surface.vertices |
+                   views::transform([](const auto& x) { return x.position; }));
+}
+
 }  // namespace nanoreflex

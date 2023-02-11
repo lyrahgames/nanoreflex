@@ -12,6 +12,7 @@ namespace nanoreflex {
 // in the state of the Viewer,
 // an OpenGL context needs to be created first.
 // We enforce this by inheriting from the context structure.
+//
 class viewer_context {
  public:
   viewer_context();
@@ -95,8 +96,6 @@ class viewer : viewer_context {
   float32 surface_load_time{};
   float32 surface_process_time{};
   //
-  vec3 aabb_min{};
-  vec3 aabb_max{};
   float bounding_radius;
   //
   opengl::shader_program surface_shader{};

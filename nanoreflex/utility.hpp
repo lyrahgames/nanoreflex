@@ -37,6 +37,14 @@
 //
 #include <glm/gtx/norm.hpp>
 
+#define NANOREFLEX_ADD_DEFAULT_CONSTRUCTOR_EXTENSION(TYPE)             \
+  constexpr auto TYPE##_from(auto&&... args) noexcept(                 \
+      noexcept(TYPE(std::forward<decltype(args)>(args)...)))           \
+    requires requires { TYPE(std::forward<decltype(args)>(args)...); } \
+  {                                                                    \
+    return TYPE(std::forward<decltype(args)>(args)...);                \
+  }
+
 namespace nanoreflex {
 
 using namespace std;

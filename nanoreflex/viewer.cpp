@@ -296,17 +296,10 @@ void viewer::handle_surface_load_task() {
 }
 
 void viewer::fit_view() {
-  // AABB computation
-  aabb_min = {INFINITY, INFINITY, INFINITY};
-  aabb_max = {-INFINITY, -INFINITY, -INFINITY};
-  for (const auto& vertex : surface.vertices) {
-    aabb_min = min(aabb_min, vertex.position);
-    aabb_max = max(aabb_max, vertex.position);
-  }
-
-  origin = 0.5f * (aabb_max + aabb_min);
-  bounding_radius = 0.5f * length(aabb_max - aabb_min);
-  radius = 0.5f * length(aabb_max - aabb_min) / tan(0.5f * cam.vfov());
+  const auto box = aabb_from(surface);
+  origin = box.origin();
+  bounding_radius = box.radius();
+  radius = bounding_radius / tan(0.5f * cam.vfov());
   cam.set_near_and_far(1e-4f * radius, 2 * radius);
   view_should_update = true;
 }

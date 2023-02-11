@@ -1,4 +1,5 @@
 #pragma once
+#include <nanoreflex/aabb.hpp>
 #include <nanoreflex/stl_binary_format.hpp>
 #include <nanoreflex/utility.hpp>
 
@@ -83,5 +84,10 @@ struct polyhedral_surface {
 
   vector<bool> orientation{};
 };
+
+/// Constructor Extension for AABB
+/// Get the bounding box around a polyhedral surface.
+///
+auto aabb_from(const polyhedral_surface& surface) noexcept -> aabb3;
 
 }  // namespace nanoreflex
