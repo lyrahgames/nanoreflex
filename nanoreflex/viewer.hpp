@@ -4,6 +4,7 @@
 #include <nanoreflex/points.hpp>
 // #include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/scene.hpp>
+#include <nanoreflex/shader_manager.hpp>
 #include <nanoreflex/utility.hpp>
 
 namespace nanoreflex {
@@ -48,6 +49,8 @@ class viewer : viewer_context {
   void handle_surface_load_task();
   void fit_view();
   void print_surface_info();
+
+  void load_shader(const filesystem::path& path, const string& name);
 
   void load_surface_shader(const filesystem::path& path);
   void reload_surface_shader();
@@ -101,6 +104,8 @@ class viewer : viewer_context {
   opengl::shader_program surface_shader{};
   filesystem::path surface_shader_path{};
   filesystem::file_time_type surface_shader_time{};
+
+  shader_manager shaders{};
 
   opengl::element_buffer selection{};
   opengl::shader_program selection_shader{};

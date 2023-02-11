@@ -15,34 +15,72 @@ struct shader_manager {
   }
 
   struct shader_data {
-    shader_program shader;
+    opengl::shader_program shader;
     filesystem::file_time_type last_change;
     filesystem::file_time_type last_access;
   };
 
+  void add_shader(const filesystem::path& path) {
+    shaders.emplace(path, shader_data{.shader = opengl::shader_from_file(path),
+                                      .last_change = last_changed(path),
+                                      .last_access = clock::now()});
+  }
+
+  void update_shader(const filesystem::path& path, shader_data& data) {
+    const auto time = last_changed(path);
+    if (time <= data.last_access) return;
+    cout << "Shader " << proximate(path) << " has changed. Reload triggered."
+         << endl;
+    // Here, the order for exception throws is important.
+    data.last_access = clock::now();
+    // Shader compilation could throw errors.
+    data.shader = opengl::shader_from_file(path);
+    data.last_change = time;
+  }
+
   void load_shader(const filesystem::path& path) {
-    bool success = true;
-    try {
-      const auto shader = shader_from_file(path);
-    } catch (runtime_error& e) {
-      success = false;
-      cerr << "ERROR:\n" << e.what() << endl;
-    }
-
-    const auto last_change = last_changed(path);
-    const auto last_access = clock::now();
-
     const auto p = canonical(path);
     const auto it = shaders.find(p);
-    if (it == end(shaders)) {
-      shaders.emplace(p, {shader, last_change, last_access});
-      return;
+    if (it == end(shaders))
+      add_shader(p);
+    else
+      update_shader(it->first, it->second);
+  }
+
+  void add_name(const filesystem::path& path, const string& name) {
+    names[name] = shaders.find(canonical(path));
+  }
+
+  void reload(auto&& function) {
+    for (auto& [path, data] : shaders) {
+      try {
+        update_shader(path, data);
+        function(data.shader);
+      } catch (const runtime_error& e) {
+        cerr << e.what() << endl;
+      }
     }
-    auto& data = it->second;
-    data.last_access = last_access;
+  }
+
+  auto apply(auto&& function) -> shader_manager& {
+    for (auto& [path, data] : shaders) function(data.shader);
+    return *this;
+  }
+
+  auto set(czstring name, auto&& value) -> shader_manager& {
+    for (auto& [path, data] : shaders)
+      data.shader.bind().set(name, forward<decltype(value)>(value));
+    return *this;
+  }
+
+  auto try_set(czstring name, auto&& value) noexcept -> shader_manager& {
+    for (auto& [path, data] : shaders)
+      data.shader.bind().try_set(name, forward<decltype(value)>(value));
+    return *this;
   }
 
   unordered_map<filesystem::path, shader_data> shaders{};
+  unordered_map<string, decltype(shaders.begin())> names{};
 };
 
 }  // namespace nanoreflex

@@ -160,6 +160,12 @@ void viewer::update_view() {
   surface_curve_point_shader  //
       .set("projection", cam.projection_matrix())
       .set("view", cam.view_matrix());
+
+  shaders.apply([this](opengl::shader_program_handle shader) {
+    shader.bind()
+        .set("projection", cam.projection_matrix())
+        .set("view", cam.view_matrix());
+  });
 }
 
 void viewer::update() {
@@ -173,13 +179,20 @@ void viewer::update() {
     info("Surface shader has changed on disk. Reloading triggered.");
     reload_surface_shader();
   }
+
+  shaders.reload([this](opengl::shader_program_handle shader) {
+    shader.bind()
+        .set("projection", cam.projection_matrix())
+        .set("view", cam.view_matrix());
+  });
 }
 
 void viewer::render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glDepthFunc(GL_LESS);
-  surface_shader.bind();
+  // surface_shader.bind();
+  shaders.names["flat"]->second.shader.bind();
   surface.render();
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -326,6 +339,11 @@ void viewer::print_surface_info() {
        << setw(left_width) << "cohomology groups"
        << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
        << endl;
+}
+
+void viewer::load_shader(const filesystem::path& path, const string& name) {
+  shaders.load_shader(path);
+  shaders.add_name(path, name);
 }
 
 void viewer::load_surface_shader(const filesystem::path& path) {
