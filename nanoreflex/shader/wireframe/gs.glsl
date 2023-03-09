@@ -1,5 +1,6 @@
 #version 330 core
 
+uniform mat4 view;
 uniform mat4 viewport;
 
 layout (triangles) in;
@@ -24,6 +25,8 @@ void main(){
   float b = length(p2 - p0);
   float c = length(p1 - p0);
 
+  vec3 n = normalize(cross(gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz, gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz));
+
   float alpha = acos((b * b + c * c - a * a) / (2.0 * b * c));
   float beta  = acos((a * a + c * c - b * b) / (2.0 * a * c));
 
@@ -32,19 +35,22 @@ void main(){
   float hc = abs(b * sin(alpha));
 
   edge_distance = vec3(ha, 0, 0);
-  nor = normal[0];
+  // nor = normal[0];
+  nor = n;
   pos = position[0];
   gl_Position = gl_in[0].gl_Position;
   EmitVertex();
 
   edge_distance = vec3(0, hb, 0);
-  nor = normal[1];
+  // nor = normal[1];
+  nor = n;
   pos = position[1];
   gl_Position = gl_in[1].gl_Position;
   EmitVertex();
 
   edge_distance = vec3(0, 0, hc);
-  nor = normal[2];
+  // nor = normal[2];
+  nor = n;
   pos = position[2];
   gl_Position = gl_in[2].gl_Position;
   EmitVertex();

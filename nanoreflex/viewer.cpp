@@ -13,7 +13,7 @@ viewer_context::viewer_context() {
   settings.stencilBits = 8;
   settings.antialiasingLevel = 4;
 
-  window.create(sf::VideoMode(800, 450), "Nanoreflex", sf::Style::Default,
+  window.create(sf::VideoMode(600, 600), "Nanoreflex", sf::Style::Default,
                 settings);
   window.setVerticalSyncEnabled(true);
   window.setKeyRepeatEnabled(false);
@@ -113,6 +113,9 @@ void viewer::process_events() {
           orientation = !orientation;
           select_oriented_cohomology_group();
           break;
+        case sf::Keyboard::Z:
+          sort_surface_faces_by_depth();
+          break;
       }
     }
   }
@@ -197,12 +200,13 @@ void viewer::render() {
   shaders.names["flat"]->second.shader.bind();
   surface.render();
 
-  shaders.names["contours"]->second.shader.bind();
-  surface.render();
+  // shaders.names["contours"]->second.shader.bind();
+  // surface.render();
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDepthFunc(GL_ALWAYS);
-  selection_shader.bind();
+  // selection_shader.bind();
+  shaders.names["selection"]->second.shader.bind();
   surface.device_handle.bind();
   selection.bind();
   glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
@@ -304,9 +308,9 @@ void viewer::handle_surface_load_task() {
 
   // vector<uint32> lines{};
   // for (const auto& [e, info] : surface.edges) {
-  //   if (info.oriented() || !surface.edges.contains({e[1], e[0]})) continue;
-  //   cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
-  //        << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0] << '\n';
+  //   if (!surface.oriented() || surface.edges.contains({e[1], e[0]})) continue;
+  //   // cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
+  //   //      << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0] << '\n';
   //   lines.push_back(e[0]);
   //   lines.push_back(e[1]);
   // }
@@ -369,7 +373,7 @@ void viewer::reload_surface_shader() {
   load_surface_shader(surface_shader_path);
 }
 
-void viewer::load_selection_shader(czstring path) {
+void viewer::load_selection_shader(const filesystem::path& path) {
   selection_shader = opengl::shader_from_file(path);
   view_should_update = true;
 }
@@ -571,6 +575,21 @@ void viewer::compute_surface_curve_points() {
 void viewer::load_surface_curve_point_shader(czstring path) {
   surface_curve_point_shader = opengl::shader_from_file(path);
   view_should_update = true;
+}
+
+void viewer::sort_surface_faces_by_depth() {
+  auto faces = surface.faces;
+  sort(begin(faces), end(faces), [&](const auto& f1, const auto& f2) {
+    const auto& v = surface.vertices;
+    const auto p1 =
+        (v[f1[0]].position + v[f1[1]].position + v[f1[2]].position) / 3.0f;
+    const auto d1 = length(cam.position() - p1);
+    const auto p2 =
+        (v[f2[0]].position + v[f2[1]].position + v[f2[2]].position) / 3.0f;
+    const auto d2 = length(cam.position() - p2);
+    return d1 > d2;
+  });
+  surface.device_faces.allocate_and_initialize(faces);
 }
 
 }  // namespace nanoreflex

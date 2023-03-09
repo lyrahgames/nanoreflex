@@ -55,7 +55,7 @@ class viewer : viewer_context {
   void load_surface_shader(const filesystem::path& path);
   void reload_surface_shader();
 
-  void load_selection_shader(czstring path);
+  void load_selection_shader(const filesystem::path& path);
 
   void update_selection();
   void select_face(float x, float y);
@@ -68,6 +68,8 @@ class viewer : viewer_context {
   void add_surface_curve_points(float x, float y);
   void load_surface_curve_point_shader(czstring path);
   void compute_surface_curve_points();
+
+  void sort_surface_faces_by_depth();
 
  private:
   sf::Vector2i mouse_pos{};
