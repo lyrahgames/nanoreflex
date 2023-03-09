@@ -302,6 +302,51 @@ auto polyhedral_surface::from(const stl_binary_format& data)
   return surface;
 }
 
+auto polyhedral_surface::from(const stl_format_surface& data)
+    -> polyhedral_surface {
+  // The hash map is used to efficiently recognize identical vertices.
+  unordered_map<
+      vec3, size_t,
+      // For hashing 'vec3' values, a custom hash function is provided.
+      decltype([](const auto& v) -> size_t {
+        return (bit_cast<uint32>(v.x) << 11) ^
+               (bit_cast<uint32>(v.y) << 5) ^  //
+               bit_cast<uint32>(v.z);
+      })>
+      indices{};
+  indices.reserve(data.triangles.size());
+
+  // Prepare the storage for the actual surface.
+  polyhedral_surface surface{};
+  surface.faces.reserve(data.triangles.size());
+  surface.vertices.reserve(data.triangles.size() / 2);
+
+  //
+  for (size_t i = 0; i < data.triangles.size(); ++i) {
+    polyhedral_surface::face f{};
+    const auto& normal = data.triangles[i].normal;
+    const auto& v = data.triangles[i].vertex;
+    for (size_t j = 0; j < 3; ++j) {
+      const auto it = indices.find(v[j]);
+      if (it == end(indices)) {
+        const int index = surface.vertices.size();
+        f[j] = index;
+        indices.emplace(v[j], index);
+        surface.vertices.push_back({v[j]});
+        continue;
+      }
+
+      const auto index = it->second;
+      f[j] = index;
+    }
+    // Remove degenerate triangles by not adding them.
+    if ((f[0] == f[1]) || (f[1] == f[2]) || (f[2] == f[0])) continue;
+    surface.faces.push_back(f);
+  }
+  surface.generate_normals();
+  return surface;
+}
+
 auto polyhedral_surface::from(const filesystem::path& path)
     -> polyhedral_surface {
   // Generate functor for prefixed error messages.
@@ -315,7 +360,8 @@ auto polyhedral_surface::from(const filesystem::path& path)
   // Use a custom loader for STL files.
   if (path.extension().string() == ".stl" ||
       path.extension().string() == ".STL")
-    return from(stl_binary_format(path));
+    // return from(stl_binary_format(path));
+    return from(stl_format_surface(path));
 
   // For all other file formats, assimp will do the trick.
   Assimp::Importer importer{};
