@@ -40,6 +40,7 @@ viewer::viewer() : viewer_context() {
   glLineWidth(4.0f);
 
   surface.setup();
+  surface2.setup();
   surface_curve_points.setup();
 }
 
@@ -198,7 +199,8 @@ void viewer::render() {
   glDepthFunc(GL_LESS);
   // surface_shader.bind();
   shaders.names["flat"]->second.shader.bind();
-  surface.render();
+  // surface.render();
+  surface2.render();
 
   // shaders.names["contours"]->second.shader.bind();
   // surface.render();
@@ -278,6 +280,7 @@ void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
     const auto start = clock::now();
     surface.host() = polyhedral_surface::from(path);
+    surface2.host() = v2::polyhedral_surface_from(path);
     const auto mid = clock::now();
     surface.generate_edges();
     surface.generate_vertex_neighbors();
@@ -303,6 +306,7 @@ void viewer::handle_surface_load_task() {
   surface_load_task = {};
 
   surface.update();
+  surface2.update();
   fit_view();
   print_surface_info();
 
@@ -348,6 +352,12 @@ void viewer::print_surface_info() {
        << " = " << setw(right_width) << surface.has_boundary() << '\n'
        << setw(left_width) << "cohomology groups"
        << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
+       << endl;
+
+  cout << setw(left_width) << "vertices"
+       << " = " << setw(right_width) << surface2.vertices.size() << '\n'
+       << setw(left_width) << "faces"
+       << " = " << setw(right_width) << surface2.faces.size() << '\n'
        << endl;
 }
 

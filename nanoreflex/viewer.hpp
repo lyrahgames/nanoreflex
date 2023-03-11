@@ -3,6 +3,7 @@
 #include <nanoreflex/opengl/opengl.hpp>
 #include <nanoreflex/points.hpp>
 // #include <nanoreflex/polyhedral_surface.hpp>
+#include <nanoreflex/polyhedral_surface_2.hpp>
 #include <nanoreflex/scene.hpp>
 #include <nanoreflex/shader_manager.hpp>
 #include <nanoreflex/utility.hpp>
@@ -91,6 +92,7 @@ class viewer : viewer_context {
 
   // polyhedral_surface surface{};
   scene surface{};
+  v2::scene surface2{};
 
   // The loading of mesh data can take quite a long time
   // and may let the window manager think the program is frozen
