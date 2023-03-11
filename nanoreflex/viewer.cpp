@@ -281,24 +281,28 @@ void viewer::set_y_as_up() {
 
 void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
-    const auto start = clock::now();
-    // surface.host() = polyhedral_surface::from(path);
-    surface.host() = v2::polyhedral_surface_from(path);
-    const auto mid = clock::now();
-    // surface.generate_edges();
-    // surface.generate_vertex_neighbors();
-    // surface.generate_face_neighbors();
-    // surface.generate_cohomology_groups();
+    try {
+      const auto start = clock::now();
+      surface.host() = v2::polyhedral_surface_from(path);
+      const auto mid = clock::now();
+      // surface.generate_edges();
+      // surface.generate_vertex_neighbors();
+      // surface.generate_face_neighbors();
+      // surface.generate_cohomology_groups();
 
-    surface.generate_topological_vertices();
-    surface.generate_edges();
-    surface.generate_face_neighbors();
-    surface.generate_connection_groups();
-    const auto end = clock::now();
+      surface.generate_topological_vertices();
+      surface.generate_edges();
+      surface.generate_face_neighbors();
+      surface.generate_connection_groups();
+      const auto end = clock::now();
 
-    // Evaluate loading and processing time.
-    surface_load_time = duration<float32>(mid - start).count();
-    surface_process_time = duration<float32>(end - mid).count();
+      // Evaluate loading and processing time.
+      surface_load_time = duration<float32>(mid - start).count();
+      surface_process_time = duration<float32>(end - mid).count();
+    } catch (exception& e) {
+      cout << "failed.\n" << e.what() << endl;
+      return;
+    }
   };
   surface_load_task = async(launch::async, loader, path);
   cout << "Loading " << path << flush;
