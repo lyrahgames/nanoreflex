@@ -40,7 +40,6 @@ viewer::viewer() : viewer_context() {
   glLineWidth(4.0f);
 
   surface.setup();
-  surface2.setup();
   surface_curve_points.setup();
 }
 
@@ -113,10 +112,10 @@ void viewer::process_events() {
           // select_cohomology_group();
           select_connection_group();
           break;
-        case sf::Keyboard::O:
-          orientation = !orientation;
-          select_oriented_cohomology_group();
-          break;
+        // case sf::Keyboard::O:
+        //   orientation = !orientation;
+        //   select_oriented_cohomology_group();
+        //   break;
         case sf::Keyboard::Z:
           sort_surface_faces_by_depth();
           break;
@@ -203,7 +202,7 @@ void viewer::render() {
   // surface_shader.bind();
   shaders.names["flat"]->second.shader.bind();
   // surface.render();
-  surface2.render();
+  surface.render();
 
   // shaders.names["contours"]->second.shader.bind();
   // surface.render();
@@ -213,7 +212,7 @@ void viewer::render() {
   // selection_shader.bind();
   shaders.names["selection"]->second.shader.bind();
   // surface.device_handle.bind();
-  surface2.device_handle.bind();
+  surface.device_handle.bind();
   selection.bind();
   glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -283,18 +282,18 @@ void viewer::set_y_as_up() {
 void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
     const auto start = clock::now();
-    surface.host() = polyhedral_surface::from(path);
-    surface2.host() = v2::polyhedral_surface_from(path);
+    // surface.host() = polyhedral_surface::from(path);
+    surface.host() = v2::polyhedral_surface_from(path);
     const auto mid = clock::now();
-    surface.generate_edges();
-    surface.generate_vertex_neighbors();
-    surface.generate_face_neighbors();
-    surface.generate_cohomology_groups();
+    // surface.generate_edges();
+    // surface.generate_vertex_neighbors();
+    // surface.generate_face_neighbors();
+    // surface.generate_cohomology_groups();
 
-    surface2.generate_topological_vertices();
-    surface2.generate_edges();
-    surface2.generate_face_neighbors();
-    surface2.generate_connection_groups();
+    surface.generate_topological_vertices();
+    surface.generate_edges();
+    surface.generate_face_neighbors();
+    surface.generate_connection_groups();
     const auto end = clock::now();
 
     // Evaluate loading and processing time.
@@ -314,8 +313,8 @@ void viewer::handle_surface_load_task() {
   cout << "done." << endl << '\n';
   surface_load_task = {};
 
+  // surface.update();
   surface.update();
-  surface2.update();
   fit_view();
   print_surface_info();
 
@@ -348,8 +347,22 @@ void viewer::print_surface_info() {
        << " = " << setw(right_width) << surface_load_time << " s\n"
        << setw(left_width) << "process time"
        << " = " << setw(right_width) << surface_process_time << " s\n"
-       << '\n'
-       << setw(left_width) << "vertices"
+       << '\n';
+  // << setw(left_width) << "vertices"
+  // << " = " << setw(right_width) << surface.vertices.size() << '\n'
+  // << setw(left_width) << "faces"
+  // << " = " << setw(right_width) << surface.faces.size() << '\n'
+  // << setw(left_width) << "consistent"
+  // << " = " << setw(right_width) << surface.consistent() << '\n'
+  // << setw(left_width) << "oriented"
+  // << " = " << setw(right_width) << surface.oriented() << '\n'
+  // << setw(left_width) << "boundary"
+  // << " = " << setw(right_width) << surface.has_boundary() << '\n'
+  // << setw(left_width) << "cohomology groups"
+  // << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
+  // << endl;
+
+  cout << setw(left_width) << "vertices"
        << " = " << setw(right_width) << surface.vertices.size() << '\n'
        << setw(left_width) << "faces"
        << " = " << setw(right_width) << surface.faces.size() << '\n'
@@ -359,22 +372,8 @@ void viewer::print_surface_info() {
        << " = " << setw(right_width) << surface.oriented() << '\n'
        << setw(left_width) << "boundary"
        << " = " << setw(right_width) << surface.has_boundary() << '\n'
-       << setw(left_width) << "cohomology groups"
-       << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
-       << endl;
-
-  cout << setw(left_width) << "vertices"
-       << " = " << setw(right_width) << surface2.vertices.size() << '\n'
-       << setw(left_width) << "faces"
-       << " = " << setw(right_width) << surface2.faces.size() << '\n'
-       << setw(left_width) << "consistent"
-       << " = " << setw(right_width) << surface2.consistent() << '\n'
-       << setw(left_width) << "oriented"
-       << " = " << setw(right_width) << surface2.oriented() << '\n'
-       << setw(left_width) << "boundary"
-       << " = " << setw(right_width) << surface2.has_boundary() << '\n'
        << setw(left_width) << "connection groups"
-       << " = " << setw(right_width) << surface2.connection_group_count << '\n'
+       << " = " << setw(right_width) << surface.connection_group_count << '\n'
        << endl;
 }
 
@@ -406,9 +405,9 @@ void viewer::load_selection_shader(const filesystem::path& path) {
 }
 
 void viewer::update_selection() {
-  decltype(surface2.faces) faces{};
+  decltype(surface.faces) faces{};
   for (size_t i = 0; i < selected_faces.size(); ++i)
-    if (selected_faces[i]) faces.push_back(surface2.faces[i]);
+    if (selected_faces[i]) faces.push_back(surface.faces[i]);
   selection.allocate_and_initialize(faces);
 }
 
@@ -435,27 +434,27 @@ void viewer::expand_selection() {
   update_selection();
 }
 
-void viewer::select_cohomology_group() {
-  selected_faces.resize(surface.faces.size());
-  for (size_t i = 0; i < surface.faces.size(); ++i)
-    selected_faces[i] = (surface.cohomology_groups[i] == group);
-  update_selection();
-}
+// void viewer::select_cohomology_group() {
+//   selected_faces.resize(surface.faces.size());
+//   for (size_t i = 0; i < surface.faces.size(); ++i)
+//     selected_faces[i] = (surface.cohomology_groups[i] == group);
+//   update_selection();
+// }
 
 void viewer::select_connection_group() {
-  selected_faces.resize(surface2.faces.size());
-  for (size_t i = 0; i < surface2.faces.size(); ++i)
-    selected_faces[i] = (surface2.connection_groups[i] == group);
+  selected_faces.resize(surface.faces.size());
+  for (size_t i = 0; i < surface.faces.size(); ++i)
+    selected_faces[i] = (surface.connection_groups[i] == group);
   update_selection();
 }
 
-void viewer::select_oriented_cohomology_group() {
-  selected_faces.resize(surface.faces.size());
-  for (size_t i = 0; i < surface.faces.size(); ++i)
-    selected_faces[i] = (surface.cohomology_groups[i] == group) &&
-                        (surface.orientation[i] == orientation);
-  update_selection();
-}
+// void viewer::select_oriented_cohomology_group() {
+//   selected_faces.resize(surface.faces.size());
+//   for (size_t i = 0; i < surface.faces.size(); ++i)
+//     selected_faces[i] = (surface.cohomology_groups[i] == group) &&
+//                         (surface.orientation[i] == orientation);
+//   update_selection();
+// }
 
 void viewer::reset_surface_curve_points() {
   surface_curve_points.vertices.clear();
@@ -499,94 +498,94 @@ void viewer::add_surface_curve_points(float x, float y) {
   const auto path = surface.shortest_face_path(fid, p.f);
 
   // Compute edge weights
-  if (path.size() == 1) {
-    const auto fid1 = curve_faces.back();
-    const auto fid2 = path[0];
-    const auto e = surface.common_edge(fid1, fid2);
-    const auto v1 = surface.vertices[e[0]].position;
-    const auto v2 = surface.vertices[e[1]].position;
-    const auto x = surface.position(fid1, 1.0f / 3, 1.0f / 3);
-    const auto y = surface.position(fid2, p.u, p.v);
-    const auto w = edge_weight(v1, v2, x, y);
-    if (!remove_artifacts(fid2)) {
-      curve_faces.push_back(fid2);
-      curve_weights.push_back(w);
-    }
-  } else if (path.size() == 2) {
-    const auto fid1 = curve_faces.back();
-    const auto fid2 = path[0];
-    const auto fid3 = path[1];
-    const auto edge1 = surface.common_edge(fid1, fid2);
-    const auto edge2 = surface.common_edge(fid2, fid3);
-    const auto o1 = surface.vertices[edge1[0]].position;
-    const auto o2 = surface.vertices[edge2[0]].position;
-    const auto e1 = normalize(surface.vertices[edge1[1]].position - o1);
-    const auto e2 = normalize(surface.vertices[edge2[1]].position - o2);
-    const auto e1l = length(surface.vertices[edge1[1]].position - o1);
-    const auto e2l = length(surface.vertices[edge2[1]].position - o2);
+  // if (path.size() == 1) {
+  //   const auto fid1 = curve_faces.back();
+  //   const auto fid2 = path[0];
+  //   const auto e = surface.common_edge(fid1, fid2);
+  //   const auto v1 = surface.vertices[e[0]].position;
+  //   const auto v2 = surface.vertices[e[1]].position;
+  //   const auto x = surface.position(fid1, 1.0f / 3, 1.0f / 3);
+  //   const auto y = surface.position(fid2, p.u, p.v);
+  //   const auto w = edge_weight(v1, v2, x, y);
+  //   if (!remove_artifacts(fid2)) {
+  //     curve_faces.push_back(fid2);
+  //     curve_weights.push_back(w);
+  //   }
+  // } else if (path.size() == 2) {
+  //   const auto fid1 = curve_faces.back();
+  //   const auto fid2 = path[0];
+  //   const auto fid3 = path[1];
+  //   const auto edge1 = surface.common_edge(fid1, fid2);
+  //   const auto edge2 = surface.common_edge(fid2, fid3);
+  //   const auto o1 = surface.vertices[edge1[0]].position;
+  //   const auto o2 = surface.vertices[edge2[0]].position;
+  //   const auto e1 = normalize(surface.vertices[edge1[1]].position - o1);
+  //   const auto e2 = normalize(surface.vertices[edge2[1]].position - o2);
+  //   const auto e1l = length(surface.vertices[edge1[1]].position - o1);
+  //   const auto e2l = length(surface.vertices[edge2[1]].position - o2);
 
-    if (edge1[0] == edge2[0])
-      cout << "left rotation" << endl;
-    else
-      cout << "right rotation" << endl;
+  //   if (edge1[0] == edge2[0])
+  //     cout << "left rotation" << endl;
+  //   else
+  //     cout << "right rotation" << endl;
 
-    const auto sign = (edge1[0] == edge2[0]) ? 1.0f : -1.0f;
+  //   const auto sign = (edge1[0] == edge2[0]) ? 1.0f : -1.0f;
 
-    const auto e1x = dot(e1, e2);
-    const auto e1y = sign * length(e1 - e1x * e2);
-    const auto e2x = e1x;
-    const auto e2y = sign * length(e2 - e2x * e1);
+  //   const auto e1x = dot(e1, e2);
+  //   const auto e1y = sign * length(e1 - e1x * e2);
+  //   const auto e2x = e1x;
+  //   const auto e2y = sign * length(e2 - e2x * e1);
 
-    const auto x = surface.position(fid1, curve_end.x, curve_end.y);
-    // const auto x = surface.position(fid1, 1.0f / 3, 1.0f / 3);
-    const auto x1 = x - o1;
-    const auto x1x = dot(x1, e1);
-    const auto x1y = length(x1 - x1x * e1);
+  //   const auto x = surface.position(fid1, curve_end.x, curve_end.y);
+  //   // const auto x = surface.position(fid1, 1.0f / 3, 1.0f / 3);
+  //   const auto x1 = x - o1;
+  //   const auto x1x = dot(x1, e1);
+  //   const auto x1y = length(x1 - x1x * e1);
 
-    const auto y = surface.position(fid3, p.u, p.v);
-    // const auto y = surface.position(fid3, 1.0f / 3, 1.0f / 3);
-    const auto y2 = y - o2;
-    const auto y2x = dot(y2, e2);
-    const auto y2y = length(y2 - y2x * e2);
+  //   const auto y = surface.position(fid3, p.u, p.v);
+  //   // const auto y = surface.position(fid3, 1.0f / 3, 1.0f / 3);
+  //   const auto y2 = y - o2;
+  //   const auto y2x = dot(y2, e2);
+  //   const auto y2y = length(y2 - y2x * e2);
 
-    const auto s = o2 - o1;
-    const auto s1x = dot(s, e1);
-    const auto s1y = length(s - s1x * e1);
-    const auto s2x = dot(s, e2);
-    const auto s2y = -length(s - s2x * e2);
+  //   const auto s = o2 - o1;
+  //   const auto s1x = dot(s, e1);
+  //   const auto s1y = length(s - s1x * e1);
+  //   const auto s2x = dot(s, e2);
+  //   const auto s2y = -length(s - s2x * e2);
 
-    const auto x2x = e1x * x1x - e1y * x1y - s2x;
-    const auto x2y = e1y * x1x + e1x * x1y - s2y;
-    const auto y1x = e2x * y2x - e2y * y2y + s1x;
-    const auto y1y = e2y * y2x + e2x * y2y + s1y;
+  //   const auto x2x = e1x * x1x - e1y * x1y - s2x;
+  //   const auto x2y = e1y * x1x + e1x * x1y - s2y;
+  //   const auto y1x = e2x * y2x - e2y * y2y + s1x;
+  //   const auto y1y = e2y * y2x + e2x * y2y + s1y;
 
-    const auto w1 = 1.0f / ((x1y) + (y1y));
-    const auto w1x = w1 * (y1y);
-    const auto w1y = w1 * (x1y);
-    const auto t1 = (w1x * x1x + w1y * y1x) / e1l;
-    const auto r1 = std::clamp(t1, 0.0f, 1.0f);
+  //   const auto w1 = 1.0f / ((x1y) + (y1y));
+  //   const auto w1x = w1 * (y1y);
+  //   const auto w1y = w1 * (x1y);
+  //   const auto t1 = (w1x * x1x + w1y * y1x) / e1l;
+  //   const auto r1 = std::clamp(t1, 0.0f, 1.0f);
 
-    const auto w2 = 1.0f / ((x2y) + (y2y));
-    const auto w2x = w2 * (y2y);
-    const auto w2y = w2 * (x2y);
-    const auto t2 = (w2x * x2x + w2y * y2x) / e2l;
-    const auto r2 = std::clamp(t2, 0.0f, 1.0f);
+  //   const auto w2 = 1.0f / ((x2y) + (y2y));
+  //   const auto w2x = w2 * (y2y);
+  //   const auto w2y = w2 * (x2y);
+  //   const auto t2 = (w2x * x2x + w2y * y2x) / e2l;
+  //   const auto r2 = std::clamp(t2, 0.0f, 1.0f);
 
-    if (!remove_artifacts(fid2)) {
-      curve_faces.push_back(fid2);
-      curve_weights.push_back(r1);
-    }
-    if (!remove_artifacts(fid3)) {
-      curve_faces.push_back(fid3);
-      curve_weights.push_back(r2);
-    }
-  } else {
-    for (auto x : path) {
-      if (remove_artifacts(x)) continue;
-      curve_faces.push_back(x);
-      curve_weights.push_back(0.5f);
-    }
+  //   if (!remove_artifacts(fid2)) {
+  //     curve_faces.push_back(fid2);
+  //     curve_weights.push_back(r1);
+  //   }
+  //   if (!remove_artifacts(fid3)) {
+  //     curve_faces.push_back(fid3);
+  //     curve_weights.push_back(r2);
+  //   }
+  // } else {
+  for (auto x : path) {
+    if (remove_artifacts(x)) continue;
+    curve_faces.push_back(x);
+    curve_weights.push_back(0.5f);
   }
+  // }
   curve_end = {p.u, p.v};
 }
 
@@ -623,8 +622,8 @@ void viewer::sort_surface_faces_by_depth() {
     const auto d2 = length(cam.position() - p2);
     return d1 > d2;
   });
+  // surface.device_faces.allocate_and_initialize(faces);
   surface.device_faces.allocate_and_initialize(faces);
-  surface2.device_faces.allocate_and_initialize(faces);
 }
 
 }  // namespace nanoreflex

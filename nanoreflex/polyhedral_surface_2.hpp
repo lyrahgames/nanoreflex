@@ -1,4 +1,5 @@
 #pragma once
+#include <nanoreflex/aabb.hpp>
 #include <nanoreflex/opengl/opengl.hpp>
 #include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
@@ -56,6 +57,14 @@ struct polyhedral_surface {
   bool has_boundary() const noexcept;
   bool consistent() const noexcept;
 
+  auto position(vertex_id vid) const noexcept -> vec3;
+  auto normal(vertex_id vid) const noexcept -> vec3;
+  auto position(edge e, real t) const noexcept -> vec3;
+  auto position(face_id fid, real u, real v) const noexcept -> vec3;
+
+  auto shortest_face_path(uint32 src, uint32 dst) const -> vector<uint32>;
+  auto common_edge(uint32 fid1, uint32 fid2) const -> edge;
+
   vector<vertex_id> topological_vertices{};
   unordered_map<edge, edge::info, edge::hasher> edges{};
   vector<array<uint32, 3>> face_neighbors{};
@@ -70,6 +79,11 @@ auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;
 
 auto polyhedral_surface_from(const filesystem::path& path)
     -> polyhedral_surface;
+
+/// Constructor Extension for AABB
+/// Get the bounding box around a polyhedral surface.
+///
+auto aabb_from(const polyhedral_surface& surface) noexcept -> aabb3;
 
 struct scene : polyhedral_surface {
   auto host() noexcept -> polyhedral_surface& { return *this; }

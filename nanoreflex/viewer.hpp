@@ -62,9 +62,9 @@ class viewer : viewer_context {
   void select_face(float x, float y);
   void expand_selection();
 
-  void select_cohomology_group();
+  // void select_cohomology_group();
   void select_connection_group();
-  void select_oriented_cohomology_group();
+  // void select_oriented_cohomology_group();
 
   void reset_surface_curve_points();
   void add_surface_curve_points(float x, float y);
@@ -92,8 +92,8 @@ class viewer : viewer_context {
   camera cam{};
 
   // polyhedral_surface surface{};
-  scene surface{};
-  v2::scene surface2{};
+  v2::scene surface{};
+  // v2::scene surface2{};
 
   // The loading of mesh data can take quite a long time
   // and may let the window manager think the program is frozen

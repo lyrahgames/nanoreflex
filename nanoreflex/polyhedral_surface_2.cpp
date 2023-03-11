@@ -117,6 +117,95 @@ bool polyhedral_surface::consistent() const noexcept {
   return true;
 }
 
+auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
+    -> vector<uint32> {
+  const auto barycenter = [&](uint32 fid) {
+    const auto& f = faces[fid];
+    return (vertices[f[0]].position + vertices[f[1]].position +
+            vertices[f[2]].position) /
+           3.0f;
+  };
+  const auto face_distance = [&](uint32 i, uint32 j) {
+    return glm::distance(barycenter(i), barycenter(j));
+  };
+
+  vector<bool> visited(faces.size(), false);
+
+  vector<float> distances(faces.size(), INFINITY);
+  distances[src] = 0;
+
+  vector<uint32> previous(faces.size());
+  previous[src] = src;
+
+  vector<uint32> queue{src};
+  const auto order = [&](uint32 i, uint32 j) {
+    return distances[i] > distances[j];
+  };
+
+  do {
+    ranges::make_heap(queue, order);
+    ranges::pop_heap(queue, order);
+    const auto current = queue.back();
+    queue.pop_back();
+
+    // cout << "current = " << current << endl;
+
+    visited[current] = true;
+
+    const auto neighbor_faces = face_neighbors[current];
+    for (int i = 0; i < 3; ++i) {
+      const auto neighbor = neighbor_faces[i];
+      if (visited[neighbor]) continue;
+
+      const auto d = face_distance(current, neighbor) + distances[current];
+      if (d >= distances[neighbor]) continue;
+
+      distances[neighbor] = d;
+      previous[neighbor] = current;
+      queue.push_back(neighbor);
+    }
+  } while (!queue.empty() && !visited[dst]);
+
+  if (queue.empty()) return {};
+
+  // Compute count and path.
+  uint32 count = 0;
+  for (auto i = dst; i != src; i = previous[i]) ++count;
+  vector<uint32> path(count);
+  for (auto i = dst; i != src; i = previous[i]) path[--count] = i;
+  return path;
+}
+
+auto polyhedral_surface::position(vertex_id vid) const noexcept -> vec3 {
+  return vertices[vid].position;
+}
+
+auto polyhedral_surface::normal(vertex_id vid) const noexcept -> vec3 {
+  return vertices[vid].normal;
+}
+
+auto polyhedral_surface::position(edge e, real t) const noexcept -> vec3 {
+  return (real(1) - t) * position(e[0]) + t * position(e[1]);
+}
+
+auto polyhedral_surface::position(face_id fid, real u, real v) const noexcept
+    -> vec3 {
+  const auto& f = faces[fid];
+  const auto w = real(1) - u - v;
+  return position(f[0]) * w + position(f[1]) * u + position(f[2]) * v;
+}
+
+auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
+  const auto& f1 = faces[fid1];
+  const auto& f2 = faces[fid2];
+
+  if (face_neighbors[fid2][0] == fid1) return {f2[0], f2[1]};
+  if (face_neighbors[fid2][1] == fid1) return {f2[1], f2[2]};
+  if (face_neighbors[fid2][2] == fid1) return {f2[2], f2[0]};
+
+  throw runtime_error("Triangles have no common edge.");
+}
+
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface {
   using size_type = polyhedral_surface::size_type;
   static_assert(same_as<size_type, stl_surface::size_type>);
@@ -205,6 +294,12 @@ auto polyhedral_surface_from(const filesystem::path& path)
     surface.faces[i][2] = scene->mMeshes[0]->mFaces[i].mIndices[2];
   }
   return surface;
+}
+
+auto aabb_from(const polyhedral_surface& surface) noexcept -> aabb3 {
+  return nanoreflex::aabb_from(
+      surface.vertices |
+      views::transform([](const auto& x) { return x.position; }));
 }
 
 }  // namespace nanoreflex::v2
