@@ -3,7 +3,7 @@
 
 namespace nanoreflex {
 
-struct stl_format_surface {
+struct stl_surface {
   using header = array<uint8, 80>;
   using size_type = uint32;
   using attribute_byte_count_type = uint16;
@@ -32,15 +32,14 @@ struct stl_format_surface {
   // So, no constructor extensions are used but only good old
   // standard constructors.
   //
-  stl_format_surface(const filesystem::path& path);
-  stl_format_surface(const filesystem::path& path, ascii_tag);
-  stl_format_surface(const filesystem::path& path, binary_tag);
+  stl_surface(const filesystem::path& path);
+  stl_surface(const filesystem::path& path, ascii_tag);
+  stl_surface(const filesystem::path& path, binary_tag);
 
   void load_from_ascii_file(const filesystem::path& path);
   void load_from_binary_file(const filesystem::path& path);
 
   vector<triangle> triangles{};
-  string name{};
 };
 
 }  // namespace nanoreflex

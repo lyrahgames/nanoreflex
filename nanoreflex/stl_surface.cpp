@@ -1,8 +1,8 @@
-#include <nanoreflex/stl_format_surface.hpp>
+#include <nanoreflex/stl_surface.hpp>
 
 namespace nanoreflex {
 
-void stl_format_surface::load_from_binary_file(const filesystem::path& path) {
+void stl_surface::load_from_binary_file(const filesystem::path& path) {
   // Provide some static assertions that make sure the loading works properly.
   static_assert(offsetof(triangle, normal) == 0);
   static_assert(offsetof(triangle, vertex[0]) == 12);
@@ -37,12 +37,13 @@ void stl_format_surface::load_from_binary_file(const filesystem::path& path) {
   }
 }
 
-void stl_format_surface::load_from_ascii_file(const filesystem::path& path) {
+void stl_surface::load_from_ascii_file(const filesystem::path& path) {
   fstream file{path, ios::in | ios::binary};
   if (!file.is_open())
     throw runtime_error("Failed to open STL file from path '"s + path.string() +
                         "'.");
 
+  string name;
   string line;
   getline(file, line);
   stringstream input{line};
@@ -82,17 +83,15 @@ void stl_format_surface::load_from_ascii_file(const filesystem::path& path) {
   }
 }
 
-stl_format_surface::stl_format_surface(const filesystem::path& path,
-                                       binary_tag) {
+stl_surface::stl_surface(const filesystem::path& path, binary_tag) {
   load_from_binary_file(path);
 }
 
-stl_format_surface::stl_format_surface(const filesystem::path& path,
-                                       ascii_tag) {
+stl_surface::stl_surface(const filesystem::path& path, ascii_tag) {
   load_from_ascii_file(path);
 }
 
-stl_format_surface::stl_format_surface(const filesystem::path& path) {
+stl_surface::stl_surface(const filesystem::path& path) {
   try {
     load_from_ascii_file(path);
   } catch (parser_error&) {

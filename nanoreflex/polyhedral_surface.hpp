@@ -1,7 +1,7 @@
 #pragma once
 #include <nanoreflex/aabb.hpp>
 #include <nanoreflex/stl_binary_format.hpp>
-#include <nanoreflex/stl_format_surface.hpp>
+#include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
 
 namespace nanoreflex {
@@ -42,7 +42,7 @@ struct polyhedral_surface {
   /// 'polyhedral_surface' from already loaded binary STL file.
   ///
   static auto from(const stl_binary_format& data) -> polyhedral_surface;
-  static auto from(const stl_format_surface& data) -> polyhedral_surface;
+  static auto from(const stl_surface& data) -> polyhedral_surface;
 
   /// Factory function to generate an instance of 'polyhedral_surface'
   /// from any kind of file format for surface meshes.

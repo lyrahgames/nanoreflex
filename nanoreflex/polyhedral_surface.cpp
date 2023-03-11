@@ -302,8 +302,7 @@ auto polyhedral_surface::from(const stl_binary_format& data)
   return surface;
 }
 
-auto polyhedral_surface::from(const stl_format_surface& data)
-    -> polyhedral_surface {
+auto polyhedral_surface::from(const stl_surface& data) -> polyhedral_surface {
   // The hash map is used to efficiently recognize identical vertices.
   unordered_map<
       vec3, size_t,
@@ -361,7 +360,7 @@ auto polyhedral_surface::from(const filesystem::path& path)
   if (path.extension().string() == ".stl" ||
       path.extension().string() == ".STL")
     // return from(stl_binary_format(path));
-    return from(stl_format_surface(path));
+    return from(stl_surface(path));
 
   // For all other file formats, assimp will do the trick.
   Assimp::Importer importer{};
