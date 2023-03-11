@@ -6,8 +6,70 @@
 
 namespace nanoreflex::v2 {
 
-constexpr auto polyhedral_surface_from(const stl_surface& data)
-    -> polyhedral_surface {
+void polyhedral_surface::edge::info::add_face(uint32 f, uint16 l) {
+  if (face[0] == invalid) {
+    face[0] = f;
+    location[0] = l;
+  } else if (face[1] == invalid) {
+    face[1] = f;
+    location[1] = l;
+  } else
+    throw runtime_error(
+        "Failed to add face to edge. Additional face would violate "
+        "requirements for a two-dimensional manifold.");
+}
+
+void polyhedral_surface::generate_topological_vertices() {
+  unordered_map<vec3, vertex_id> indices{};
+  indices.reserve(vertices.size());
+
+  topological_vertices.resize(vertices.size());
+  vertex_id id = 0;
+
+  for (vertex_id i = 0; i < vertices.size(); ++i) {
+    const auto position = vertices[i].position;
+    const auto it = indices.find(position);
+    if (it == end(indices)) {
+      indices.emplace(position, id++);
+      continue;
+    }
+    topological_vertices[i] = it->second;
+  }
+}
+
+void polyhedral_surface::generate_edges() {
+  edges.clear();
+  for (size_t i = 0; i < faces.size(); ++i) {
+    const auto& f = faces[i];
+    edges[edge{topological_vertices[f[0]], topological_vertices[f[1]]}]
+        .add_face(i, 0);
+    edges[edge{topological_vertices[f[1]], topological_vertices[f[2]]}]
+        .add_face(i, 1);
+    edges[edge{topological_vertices[f[2]], topological_vertices[f[0]]}]
+        .add_face(i, 2);
+  }
+}
+
+void polyhedral_surface::generate_face_neighbors() {
+  face_neighbors.resize(faces.size());
+  for (const auto& [e, info] : edges) {
+    if (info.oriented()) {
+      const auto it = edges.find(edge{e[1], e[0]});
+      if (it == end(edges))
+        face_neighbors[info.face[0]][info.location[0]] = invalid;
+      else {
+        const auto& [e2, info2] = *it;
+        face_neighbors[info.face[0]][info.location[0]] = info2.face[0];
+        // face_neighbors[info2.face[0]][info2.location[0]] = info.face[0];
+      }
+    } else {
+      face_neighbors[info.face[0]][info.location[0]] = info.face[1];
+      face_neighbors[info.face[1]][info.location[1]] = info.face[0];
+    }
+  }
+}
+
+auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface {
   using size_type = polyhedral_surface::size_type;
   static_assert(same_as<size_type, stl_surface::size_type>);
 

@@ -3,6 +3,15 @@
 #include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
 
+template <>
+struct std::hash<glm::vec3> {
+  constexpr auto operator()(const glm::vec3& v) const noexcept -> size_t {
+    return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
+           (size_t(bit_cast<uint32_t>(v.y)) << 5) ^  //
+           size_t(bit_cast<uint32_t>(v.z));
+  }
+};
+
 namespace nanoreflex::v2 {
 
 struct polyhedral_surface {
@@ -17,15 +26,37 @@ struct polyhedral_surface {
   };
   using vertex_id = uint32;
 
+  struct edge : array<uint32, 2> {
+    struct info {
+      bool oriented() const noexcept { return face[1] == invalid; }
+      void add_face(uint32 f, uint16 l);
+      uint32 face[2]{invalid, invalid};
+      uint16 location[2];
+    };
+
+    struct hasher {
+      auto operator()(const edge& e) const noexcept -> size_t {
+        return (size_t(e[0]) << 7) ^ size_t(e[1]);
+      }
+    };
+  };
+
   struct face : array<vertex_id, 3> {};
   using face_id = uint32;
 
   vector<vertex> vertices{};
   vector<face> faces{};
+
+  void generate_topological_vertices();
+  void generate_edges();
+  void generate_face_neighbors();
+
+  vector<vertex_id> topological_vertices{};
+  unordered_map<edge, edge::info, edge::hasher> edges{};
+  vector<array<uint32, 3>> face_neighbors{};
 };
 
-constexpr auto polyhedral_surface_from(const stl_surface& data)
-    -> polyhedral_surface;
+auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;
 
 auto polyhedral_surface_from(const filesystem::path& path)
     -> polyhedral_surface;
