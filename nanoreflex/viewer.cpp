@@ -100,15 +100,18 @@ void viewer::process_events() {
           expand_selection();
           break;
         case sf::Keyboard::S:
-          select_cohomology_group();
+          // select_cohomology_group();
+          select_connection_group();
           break;
         case sf::Keyboard::X:
           ++group;
-          select_cohomology_group();
+          // select_cohomology_group();
+          select_connection_group();
           break;
         case sf::Keyboard::Y:
           --group;
-          select_cohomology_group();
+          // select_cohomology_group();
+          select_connection_group();
           break;
         case sf::Keyboard::O:
           orientation = !orientation;
@@ -209,7 +212,8 @@ void viewer::render() {
   glDepthFunc(GL_ALWAYS);
   // selection_shader.bind();
   shaders.names["selection"]->second.shader.bind();
-  surface.device_handle.bind();
+  // surface.device_handle.bind();
+  surface2.device_handle.bind();
   selection.bind();
   glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -286,6 +290,11 @@ void viewer::load_surface(const filesystem::path& path) {
     surface.generate_vertex_neighbors();
     surface.generate_face_neighbors();
     surface.generate_cohomology_groups();
+
+    surface2.generate_topological_vertices();
+    surface2.generate_edges();
+    surface2.generate_face_neighbors();
+    surface2.generate_connection_groups();
     const auto end = clock::now();
 
     // Evaluate loading and processing time.
@@ -358,6 +367,14 @@ void viewer::print_surface_info() {
        << " = " << setw(right_width) << surface2.vertices.size() << '\n'
        << setw(left_width) << "faces"
        << " = " << setw(right_width) << surface2.faces.size() << '\n'
+       << setw(left_width) << "consistent"
+       << " = " << setw(right_width) << surface2.consistent() << '\n'
+       << setw(left_width) << "oriented"
+       << " = " << setw(right_width) << surface2.oriented() << '\n'
+       << setw(left_width) << "boundary"
+       << " = " << setw(right_width) << surface2.has_boundary() << '\n'
+       << setw(left_width) << "connection groups"
+       << " = " << setw(right_width) << surface2.connection_group_count << '\n'
        << endl;
 }
 
@@ -389,9 +406,9 @@ void viewer::load_selection_shader(const filesystem::path& path) {
 }
 
 void viewer::update_selection() {
-  decltype(surface.faces) faces{};
+  decltype(surface2.faces) faces{};
   for (size_t i = 0; i < selected_faces.size(); ++i)
-    if (selected_faces[i]) faces.push_back(surface.faces[i]);
+    if (selected_faces[i]) faces.push_back(surface2.faces[i]);
   selection.allocate_and_initialize(faces);
 }
 
@@ -422,6 +439,13 @@ void viewer::select_cohomology_group() {
   selected_faces.resize(surface.faces.size());
   for (size_t i = 0; i < surface.faces.size(); ++i)
     selected_faces[i] = (surface.cohomology_groups[i] == group);
+  update_selection();
+}
+
+void viewer::select_connection_group() {
+  selected_faces.resize(surface2.faces.size());
+  for (size_t i = 0; i < surface2.faces.size(); ++i)
+    selected_faces[i] = (surface2.connection_groups[i] == group);
   update_selection();
 }
 
@@ -600,6 +624,7 @@ void viewer::sort_surface_faces_by_depth() {
     return d1 > d2;
   });
   surface.device_faces.allocate_and_initialize(faces);
+  surface2.device_faces.allocate_and_initialize(faces);
 }
 
 }  // namespace nanoreflex

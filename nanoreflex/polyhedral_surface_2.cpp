@@ -30,6 +30,7 @@ void polyhedral_surface::generate_topological_vertices() {
     const auto position = vertices[i].position;
     const auto it = indices.find(position);
     if (it == end(indices)) {
+      topological_vertices[i] = id;
       indices.emplace(position, id++);
       continue;
     }
@@ -67,6 +68,53 @@ void polyhedral_surface::generate_face_neighbors() {
       face_neighbors[info.face[1]][info.location[1]] = info.face[0];
     }
   }
+}
+
+void polyhedral_surface::generate_connection_groups() {
+  cout << "Generate connection_groups" << endl;
+  // connection_groups.assign(faces.size(), invalid);
+  connection_groups.resize(faces.size());
+  for (size_t i = 0; i < faces.size(); ++i) connection_groups[i] = invalid;
+
+  vector<face_id> face_stack{};
+  group_id group = 0;
+
+  for (face_id fid = 0; fid < faces.size(); ++fid) {
+    if (connection_groups[fid] != invalid) continue;
+    face_stack.push_back(fid);
+    while (!face_stack.empty()) {
+      const auto f = face_stack.back();
+      face_stack.pop_back();
+      connection_groups[f] = group;
+      const auto& face = faces[f];
+      for (int i = 0; i < 3; ++i) {
+        const auto nid = face_neighbors[f][i];
+        if (nid == invalid) continue;
+        if (connection_groups[nid] != invalid) continue;
+        face_stack.push_back(nid);
+      }
+    }
+    ++group;
+  }
+  connection_group_count = group;
+}
+
+bool polyhedral_surface::oriented() const noexcept {
+  for (auto& [e, info] : edges)
+    if (!info.oriented()) return false;
+  return true;
+}
+
+bool polyhedral_surface::has_boundary() const noexcept {
+  for (auto& [e, info] : edges)
+    if (!edges.contains(edge{e[1], e[0]}) && info.oriented()) return true;
+  return false;
+}
+
+bool polyhedral_surface::consistent() const noexcept {
+  for (auto& [e, info] : edges)
+    if (!info.oriented() && edges.contains(edge{e[1], e[0]})) return false;
+  return true;
 }
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface {

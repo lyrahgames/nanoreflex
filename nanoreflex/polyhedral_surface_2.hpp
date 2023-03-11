@@ -50,10 +50,20 @@ struct polyhedral_surface {
   void generate_topological_vertices();
   void generate_edges();
   void generate_face_neighbors();
+  void generate_connection_groups();
+
+  bool oriented() const noexcept;
+  bool has_boundary() const noexcept;
+  bool consistent() const noexcept;
 
   vector<vertex_id> topological_vertices{};
   unordered_map<edge, edge::info, edge::hasher> edges{};
   vector<array<uint32, 3>> face_neighbors{};
+
+  // Face map
+  using group_id = face_id;  // Every face could be part
+  vector<group_id> connection_groups{};
+  group_id connection_group_count = 0;
 };
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;

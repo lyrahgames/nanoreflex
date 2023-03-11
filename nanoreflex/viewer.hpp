@@ -63,6 +63,7 @@ class viewer : viewer_context {
   void expand_selection();
 
   void select_cohomology_group();
+  void select_connection_group();
   void select_oriented_cohomology_group();
 
   void reset_surface_curve_points();
