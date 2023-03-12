@@ -119,6 +119,10 @@ void viewer::process_events() {
         case sf::Keyboard::Z:
           sort_surface_faces_by_depth();
           break;
+        case sf::Keyboard::C:
+          close_surface_curve();
+          compute_surface_curve_points();
+          break;
       }
     }
   }
@@ -198,7 +202,7 @@ void viewer::update() {
 void viewer::render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glDepthFunc(GL_LESS);
+  glDepthFunc(GL_LEQUAL);
   // surface_shader.bind();
   shaders.names["flat"]->second.shader.bind();
   // surface.render();
@@ -208,17 +212,21 @@ void viewer::render() {
   // surface.render();
 
   // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  glDepthFunc(GL_ALWAYS);
   // selection_shader.bind();
 
-  // shaders.names["selection"]->second.shader.bind();
-
   surface.device_handle.bind();
+
+  shaders.names["selection"]->second.shader.bind();
+  selection.bind();
+  glDrawElements(GL_TRIANGLES, 3 * selection.size() / sizeof(GL_UNSIGNED_INT),
+                 GL_UNSIGNED_INT, 0);
 
   shaders.names["boundary"]->second.shader.bind();
   surface_boundary.bind();
   glDrawElements(GL_LINES, surface_boundary.size() / sizeof(GL_UNSIGNED_INT),
                  GL_UNSIGNED_INT, 0);
+
+  glDepthFunc(GL_ALWAYS);
 
   shaders.names["unoriented"]->second.shader.bind();
   surface_unoriented_edges.bind();
@@ -232,8 +240,6 @@ void viewer::render() {
                  surface_inconsistent_edges.size() / sizeof(GL_UNSIGNED_INT),
                  GL_UNSIGNED_INT, 0);
 
-  // selection.bind();
-  // glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
   // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
   // edge_selection.bind();
@@ -478,6 +484,7 @@ void viewer::reset_surface_curve_points() {
   curve.clear();
   surface_curve_points.vertices.clear();
   surface_curve_points.update();
+  selection.allocate_and_initialize(nullptr, 0);
   // surface_curve_intersections.clear();
   // curve_faces.clear();
   // curve_weights.clear();
@@ -644,6 +651,31 @@ void viewer::compute_surface_curve_points() {
   //     surface.position(curve_faces.back(), curve_end.x, curve_end.y));
   surface_curve_points.vertices = points_from(surface, curve);
   surface_curve_points.update();
+
+  vector<uint32> indices{};
+  for (auto fid : curve.face_strip) {
+    const auto& f = surface.faces[fid];
+    indices.push_back(f[0]);
+    indices.push_back(f[1]);
+    indices.push_back(f[2]);
+  }
+  selection.allocate_and_initialize(indices);
+}
+
+void viewer::close_surface_curve() {
+  if (curve.face_strip.size() < 3) return;
+
+  const auto fid1 = curve.face_strip.front();
+  const auto fid2 = curve.face_strip.back();
+  const auto path = surface.shortest_face_path(fid2, fid1);
+
+  for (auto x : path) {
+    if (curve.remove_artifacts(x)) continue;
+    curve.face_strip.push_back(x);
+    curve.edge_weights.push_back(0.5f);
+  }
+
+  curve.remove_closed_artifacts();
 }
 
 // void viewer::load_surface_curve_point_shader(czstring path) {

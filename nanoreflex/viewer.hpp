@@ -71,6 +71,8 @@ class viewer : viewer_context {
   // void load_surface_curve_point_shader(czstring path);
   void compute_surface_curve_points();
 
+  void close_surface_curve();
+
   void sort_surface_faces_by_depth();
 
  private:
