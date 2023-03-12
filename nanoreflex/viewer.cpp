@@ -490,6 +490,8 @@ void viewer::reset_surface_curve_points() {
   curve.clear();
   surface_curve_points.vertices.clear();
   surface_curve_points.update();
+  smooth_curve_points.vertices.clear();
+  smooth_curve_points.update();
   selection.allocate_and_initialize(nullptr, 0);
   // surface_curve_intersections.clear();
   // curve_faces.clear();
@@ -509,13 +511,13 @@ void viewer::add_surface_curve_points(float x, float y) {
   // }
 
   if (curve.face_strip.empty()) {
-    curve.face_strip.push_back(p.f);
+    curve.face_strip.push_back(p.f << 2);
     return;
   }
 
   const auto remove_artifacts = [&](uint32 f) {
     // const auto fid = curve_faces.back();
-    const auto fid = curve.face_strip.back();
+    const auto fid = curve.face_strip.back() >> 2;
     if (f == fid) {
       // curve_end = {p.u, p.v};
       return true;
@@ -523,7 +525,7 @@ void viewer::add_surface_curve_points(float x, float y) {
     // if (curve_faces.size() >= 2) {
     if (curve.face_strip.size() >= 2) {
       // const auto fid2 = curve_faces[curve_faces.size() - 2];
-      const auto fid2 = curve.face_strip[curve.face_strip.size() - 2];
+      const auto fid2 = curve.face_strip[curve.face_strip.size() - 2] >> 2;
       if (f == fid2) {
         // curve_faces.pop_back();
         // curve_weights.pop_back();
@@ -537,14 +539,14 @@ void viewer::add_surface_curve_points(float x, float y) {
 
   if (remove_artifacts(p.f)) return;
   // const auto fid = curve_faces.back();
-  const auto fid = curve.face_strip.back();
+  const auto fid = curve.face_strip.back() >> 2;
   const auto path = surface.shortest_face_path(fid, p.f);
 
   for (auto x : path) {
     if (remove_artifacts(x)) continue;
     // curve_faces.push_back(x);
     // curve_weights.push_back(0.5f);
-    curve.face_strip.push_back(x);
+    curve.face_strip.push_back(x << 2);
     curve.edge_weights.push_back(0.5f);
   }
 
@@ -665,7 +667,7 @@ void viewer::compute_surface_curve_points() {
 
   vector<uint32> indices{};
   for (auto fid : smooth_curve.face_strip) {
-    const auto& f = surface.faces[fid];
+    const auto& f = surface.faces[fid >> 2];
     indices.push_back(f[0]);
     indices.push_back(f[1]);
     indices.push_back(f[2]);
@@ -676,13 +678,13 @@ void viewer::compute_surface_curve_points() {
 void viewer::close_surface_curve() {
   if (curve.face_strip.size() < 3) return;
 
-  const auto fid1 = curve.face_strip.front();
-  const auto fid2 = curve.face_strip.back();
+  const auto fid1 = curve.face_strip.front() >> 2;
+  const auto fid2 = curve.face_strip.back() >> 2;
   const auto path = surface.shortest_face_path(fid2, fid1);
 
   for (auto x : path) {
     if (curve.remove_artifacts(x)) continue;
-    curve.face_strip.push_back(x);
+    curve.face_strip.push_back(x << 2);
     curve.edge_weights.push_back(0.5f);
   }
 

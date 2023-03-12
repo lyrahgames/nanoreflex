@@ -17,17 +17,18 @@ struct surface_mesh_curve {
     control_points.resize(face_strip.size() - 1);
 
     for (size_t i = 0; i < face_strip.size() - 1; ++i) {
-      const auto e = surface.common_edge(face_strip[i], face_strip[i + 1]);
+      const auto e =
+          surface.common_edge(face_strip[i] >> 2, face_strip[i + 1] >> 2);
       control_points[i] = surface.position(e, edge_weights[i]);
     }
     if (closed()) control_points.push_back(control_points.front());
   }
 
   bool remove_artifacts(uint32 f) {
-    const auto fid = face_strip.back();
+    const auto fid = face_strip.back() >> 2;
     if (f == fid) return true;
     if (face_strip.size() >= 2) {
-      const auto fid2 = face_strip[face_strip.size() - 2];
+      const auto fid2 = face_strip[face_strip.size() - 2] >> 2;
       if (f == fid2) {
         face_strip.pop_back();
         edge_weights.pop_back();
@@ -39,11 +40,11 @@ struct surface_mesh_curve {
 
   void remove_closed_artifacts() {
     if (face_strip.size() < 4) return;
-    if (face_strip.front() != face_strip.back()) return;
+    if ((face_strip.front() >> 2) != (face_strip.back() >> 2)) return;
     int cut = 0;
     while (true) {
-      const auto fid1 = face_strip[1 + cut];
-      const auto fid2 = face_strip[face_strip.size() - 2 - cut];
+      const auto fid1 = face_strip[1 + cut] >> 2;
+      const auto fid2 = face_strip[face_strip.size() - 2 - cut] >> 2;
       if (fid1 != fid2) break;
       ++cut;
     }
@@ -56,7 +57,9 @@ struct surface_mesh_curve {
     edge_weights.swap(new_edge_weights);
   }
 
-  bool closed() const { return face_strip.front() == face_strip.back(); }
+  bool closed() const {
+    return (face_strip.front() >> 2) == (face_strip.back() >> 2);
+  }
 
   void smooth(const polyhedral_surface& surface) {
     if (face_strip.size() < 4) return;
@@ -83,8 +86,8 @@ struct surface_mesh_curve {
     };
 
     for (size_t i = 1; i < control_points.size() - 1; ++i) {
-      const auto fl = face_strip[i];
-      const auto fr = face_strip[i + 1];
+      const auto fl = face_strip[i] >> 2;
+      const auto fr = face_strip[i + 1] >> 2;
       const auto e = surface.common_edge(fl, fr);
       edge_weights[i] = relax(control_points[i - 1], control_points[i + 1],
                               surface.position(e[0]), surface.position(e[1]),
@@ -92,80 +95,21 @@ struct surface_mesh_curve {
     }
 
     if (closed()) {
-      const auto fl = face_strip.front();
-      const auto fr = face_strip[1];
+      const auto fl = face_strip.front() >> 2;
+      const auto fr = face_strip[1] >> 2;
       const auto e = surface.common_edge(fl, fr);
       edge_weights[0] = relax(control_points[control_points.size() - 2],
                               control_points[1], surface.position(e[0]),
                               surface.position(e[1]), edge_weights[0]);
     }
+  }
 
-    // for (size_t i = 1; i < face_strip.size() - 2; i += 2) {
-    //   const auto fll = face_strip[i - 1];
-    //   const auto fl = face_strip[i];
-    //   const auto fr = face_strip[i + 1];
-    //   const auto frr = face_strip[i + 2];
+  void reflect(const polyhedral_surface& surface) {
+    if (face_strip.size() < 5) return;
 
-    //   const auto pe = surface.common_edge(fll, fl);
-    //   const auto l = surface.position(pe, edge_weights[i - 1]);
-
-    //   const auto qe = surface.common_edge(fr, frr);
-    //   const auto r = surface.position(qe, edge_weights[i + 1]);
-
-    //   const auto e = surface.common_edge(fl, fr);
-
-    //   const auto p = r - surface.position(e[0]);
-    //   const auto q = l - surface.position(e[0]);
-    //   const auto v = surface.position(e[1]) - surface.position(e[0]);
-    //   const auto vl = length(v);
-    //   const auto ivl = 1 / vl;
-    //   const auto vn = ivl * v;
-
-    //   const auto py = dot(p, vn);
-    //   const auto qy = dot(q, vn);
-    //   const auto px = -length(p - py * vn);
-    //   const auto qx = length(q - qy * vn);
-
-    //   const auto t = (py * qx - qy * px) / (qx - px) * ivl;
-    //   const auto relaxation = 0.5f;
-    //   edge_weights[i] = std::clamp(
-    //       (1 - relaxation) * edge_weights[i] + relaxation * t, 0.0f, 1.0f);
-    // }
-
-    // if (closed()) {
-    // }
-
-    // for (size_t i = 2; i < face_strip.size() - 2; i += 2) {
-    //   const auto fll = face_strip[i - 1];
-    //   const auto fl = face_strip[i];
-    //   const auto fr = face_strip[i + 1];
-    //   const auto frr = face_strip[i + 2];
-
-    //   const auto pe = surface.common_edge(fll, fl);
-    //   const auto l = surface.position(pe, edge_weights[i - 1]);
-
-    //   const auto qe = surface.common_edge(fr, frr);
-    //   const auto r = surface.position(qe, edge_weights[i + 1]);
-
-    //   const auto e = surface.common_edge(fl, fr);
-
-    //   const auto p = r - surface.position(e[0]);
-    //   const auto q = l - surface.position(e[0]);
-    //   const auto v = surface.position(e[1]) - surface.position(e[0]);
-    //   const auto vl = length(v);
-    //   const auto ivl = 1 / vl;
-    //   const auto vn = ivl * v;
-
-    //   const auto py = dot(p, vn);
-    //   const auto qy = dot(q, vn);
-    //   const auto px = -length(p - py * vn);
-    //   const auto qx = length(q - qy * vn);
-
-    //   const auto t = (py * qx - qy * px) / (qx - px) * ivl;
-    //   const auto relaxation = 0.5f;
-    //   edge_weights[i] = std::clamp(
-    //       (1 - relaxation) * edge_weights[i] + relaxation * t, 0.0f, 1.0f);
-    // }
+    // const auto fid0 = face_strip[1];
+    // const auto fid1 = face_strip[2];
+    // const auto fid2 = face_strip[3];
   }
 
   vector<uint32> face_strip;
@@ -182,8 +126,8 @@ constexpr auto points_from(const polyhedral_surface& surface,
   points.resize(curve.face_strip.size() - 1);
 
   for (size_t i = 0; i < curve.face_strip.size() - 1; ++i) {
-    const auto e =
-        surface.common_edge(curve.face_strip[i], curve.face_strip[i + 1]);
+    const auto e = surface.common_edge(curve.face_strip[i] >> 2,
+                                       curve.face_strip[i + 1] >> 2);
     points[i] = surface.position(e, curve.edge_weights[i]);
   }
   if (curve.closed()) points.push_back(points.front());

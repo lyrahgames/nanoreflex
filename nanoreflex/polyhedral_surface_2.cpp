@@ -76,12 +76,14 @@ void polyhedral_surface::generate_face_neighbors() {
         face_neighbors[info.face[0]][info.location[0]] = invalid;
       else {
         const auto& [e2, info2] = *it;
-        face_neighbors[info.face[0]][info.location[0]] = info2.face[0];
-        // face_neighbors[info2.face[0]][info2.location[0]] = info.face[0];
+        face_neighbors[info.face[0]][info.location[0]] =
+            uint32(info2.face[0] << 2) | uint32(info2.location[0]);
       }
     } else {
-      face_neighbors[info.face[0]][info.location[0]] = info.face[1];
-      face_neighbors[info.face[1]][info.location[1]] = info.face[0];
+      face_neighbors[info.face[0]][info.location[0]] =
+          uint32(info.face[1] << 2) | uint32(info.location[1]);
+      face_neighbors[info.face[1]][info.location[1]] =
+          uint32(info.face[0] << 2) | uint32(info.location[0]);
     }
   }
 }
@@ -101,7 +103,7 @@ void polyhedral_surface::generate_connection_groups() {
       connection_groups[f] = group;
       const auto& face = faces[f];
       for (int i = 0; i < 3; ++i) {
-        const auto nid = face_neighbors[f][i];
+        const auto nid = (face_neighbors[f][i] >> 2);
         if (nid == invalid) continue;
         if (connection_groups[nid] != invalid) continue;
         face_stack.push_back(nid);
@@ -167,7 +169,7 @@ auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
 
     const auto neighbor_faces = face_neighbors[current];
     for (int i = 0; i < 3; ++i) {
-      const auto neighbor = neighbor_faces[i];
+      const auto neighbor = (neighbor_faces[i] >> 2);
       if (visited[neighbor]) continue;
 
       const auto d = face_distance(current, neighbor) + distances[current];
@@ -212,9 +214,9 @@ auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
   const auto& f1 = faces[fid1];
   const auto& f2 = faces[fid2];
 
-  if (face_neighbors[fid2][0] == fid1) return {f2[0], f2[1]};
-  if (face_neighbors[fid2][1] == fid1) return {f2[1], f2[2]};
-  if (face_neighbors[fid2][2] == fid1) return {f2[2], f2[0]};
+  if ((face_neighbors[fid2][0] >> 2) == fid1) return {f2[0], f2[1]};
+  if ((face_neighbors[fid2][1] >> 2) == fid1) return {f2[1], f2[2]};
+  if ((face_neighbors[fid2][2] >> 2) == fid1) return {f2[2], f2[0]};
 
   throw runtime_error("Triangles have no common edge.");
 }
