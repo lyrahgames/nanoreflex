@@ -4,15 +4,6 @@
 #include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
 
-template <>
-struct std::hash<glm::vec3> {
-  constexpr auto operator()(const glm::vec3& v) const noexcept -> size_t {
-    return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
-           (size_t(bit_cast<uint32_t>(v.y)) << 5) ^  //
-           size_t(bit_cast<uint32_t>(v.z));
-  }
-};
-
 namespace nanoreflex::v2 {
 
 struct polyhedral_surface {
@@ -26,6 +17,9 @@ struct polyhedral_surface {
     vec3 normal;
   };
   using vertex_id = uint32;
+
+  template <typename type>
+  struct vertex_map : vector<type> {};
 
   struct edge : array<uint32, 2> {
     struct info {
