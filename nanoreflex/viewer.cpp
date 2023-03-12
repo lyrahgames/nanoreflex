@@ -100,7 +100,9 @@ void viewer::process_events() {
           break;
         case sf::Keyboard::S:
           // select_cohomology_group();
-          select_connection_group();
+          // select_connection_group();
+          curve.smooth(surface);
+          compute_surface_curve_points();
           break;
         case sf::Keyboard::X:
           ++group;
