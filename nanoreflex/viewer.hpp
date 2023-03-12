@@ -4,7 +4,6 @@
 #include <nanoreflex/points.hpp>
 // #include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/polyhedral_surface_2.hpp>
-#include <nanoreflex/scene.hpp>
 #include <nanoreflex/shader_manager.hpp>
 #include <nanoreflex/utility.hpp>
 
@@ -53,10 +52,10 @@ class viewer : viewer_context {
 
   void load_shader(const filesystem::path& path, const string& name);
 
-  void load_surface_shader(const filesystem::path& path);
-  void reload_surface_shader();
+  // void load_surface_shader(const filesystem::path& path);
+  // void reload_surface_shader();
 
-  void load_selection_shader(const filesystem::path& path);
+  // void load_selection_shader(const filesystem::path& path);
 
   void update_selection();
   void select_face(float x, float y);
@@ -68,7 +67,7 @@ class viewer : viewer_context {
 
   void reset_surface_curve_points();
   void add_surface_curve_points(float x, float y);
-  void load_surface_curve_point_shader(czstring path);
+  // void load_surface_curve_point_shader(czstring path);
   void compute_surface_curve_points();
 
   void sort_surface_faces_by_depth();
@@ -92,7 +91,7 @@ class viewer : viewer_context {
   camera cam{};
 
   // polyhedral_surface surface{};
-  v2::scene surface{};
+  scene surface{};
   // v2::scene surface2{};
 
   // The loading of mesh data can take quite a long time
@@ -106,14 +105,14 @@ class viewer : viewer_context {
   //
   float bounding_radius;
   //
-  opengl::shader_program surface_shader{};
+  // opengl::shader_program surface_shader{};
   filesystem::path surface_shader_path{};
   filesystem::file_time_type surface_shader_time{};
 
   shader_manager shaders{};
 
   opengl::element_buffer selection{};
-  opengl::shader_program selection_shader{};
+  // opengl::shader_program selection_shader{};
 
   vector<bool> selected_faces{};
   uint32 group = 0;
@@ -122,7 +121,7 @@ class viewer : viewer_context {
   opengl::element_buffer edge_selection{};
 
   points surface_curve_points{};
-  opengl::shader_program surface_curve_point_shader{};
+  // opengl::shader_program surface_curve_point_shader{};
 
   vector<uint32> curve_faces{};
   vec2 curve_start, curve_end;

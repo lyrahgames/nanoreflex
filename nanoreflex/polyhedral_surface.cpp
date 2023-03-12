@@ -4,7 +4,7 @@
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 
-namespace nanoreflex {
+namespace nanoreflex::deprecated {
 
 void polyhedral_surface::edge::info::add_face(uint32 f, uint16 l) {
   if (face[0] == invalid) {
@@ -417,8 +417,9 @@ auto polyhedral_surface::from(const filesystem::path& path)
 }
 
 auto aabb_from(const polyhedral_surface& surface) noexcept -> aabb3 {
-  return aabb_from(surface.vertices |
-                   views::transform([](const auto& x) { return x.position; }));
+  return nanoreflex::aabb_from(
+      surface.vertices |
+      views::transform([](const auto& x) { return x.position; }));
 }
 
-}  // namespace nanoreflex
+}  // namespace nanoreflex::deprecated

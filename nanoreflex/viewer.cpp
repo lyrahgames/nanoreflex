@@ -79,9 +79,9 @@ void viewer::process_events() {
         case sf::Keyboard::Escape:
           running = false;
           break;
-        case sf::Keyboard::R:
-          reload_surface_shader();
-          break;
+        // case sf::Keyboard::R:
+        //   reload_surface_shader();
+        //   break;
         case sf::Keyboard::Num1:
           set_y_as_up();
           break;
@@ -152,20 +152,20 @@ void viewer::update_view() {
   cam.set_near_and_far(std::max(1e-3f * radius, radius - bounding_radius),
                        radius + bounding_radius);
 
-  surface_shader.bind();
-  surface_shader  //
-      .set("projection", cam.projection_matrix())
-      .set("view", cam.view_matrix());
+  // surface_shader.bind();
+  // surface_shader  //
+  //     .set("projection", cam.projection_matrix())
+  //     .set("view", cam.view_matrix());
 
-  selection_shader.bind();
-  selection_shader  //
-      .set("projection", cam.projection_matrix())
-      .set("view", cam.view_matrix());
+  // selection_shader.bind();
+  // selection_shader  //
+  //     .set("projection", cam.projection_matrix())
+  //     .set("view", cam.view_matrix());
 
-  surface_curve_point_shader.bind();
-  surface_curve_point_shader  //
-      .set("projection", cam.projection_matrix())
-      .set("view", cam.view_matrix());
+  // surface_curve_point_shader.bind();
+  // surface_curve_point_shader  //
+  //     .set("projection", cam.projection_matrix())
+  //     .set("view", cam.view_matrix());
 
   shaders.apply([this](opengl::shader_program_handle shader) {
     shader.bind()
@@ -182,10 +182,10 @@ void viewer::update() {
     view_should_update = false;
   }
 
-  if (surface_shader_time != last_changed(surface_shader_path)) {
-    info("Surface shader has changed on disk. Reloading triggered.");
-    reload_surface_shader();
-  }
+  // if (surface_shader_time != last_changed(surface_shader_path)) {
+  //   info("Surface shader has changed on disk. Reloading triggered.");
+  //   reload_surface_shader();
+  // }
 
   shaders.reload([this](opengl::shader_program_handle shader) {
     shader.bind()
@@ -283,7 +283,7 @@ void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
     try {
       const auto start = clock::now();
-      surface.host() = v2::polyhedral_surface_from(path);
+      surface.host() = polyhedral_surface_from(path);
       const auto mid = clock::now();
       // surface.generate_edges();
       // surface.generate_vertex_neighbors();
@@ -305,7 +305,7 @@ void viewer::load_surface(const filesystem::path& path) {
     }
   };
   surface_load_task = async(launch::async, loader, path);
-  cout << "Loading " << path << flush;
+  cout << "Loading " << path << "..." << flush;
 }
 
 void viewer::handle_surface_load_task() {
@@ -352,19 +352,6 @@ void viewer::print_surface_info() {
        << setw(left_width) << "process time"
        << " = " << setw(right_width) << surface_process_time << " s\n"
        << '\n';
-  // << setw(left_width) << "vertices"
-  // << " = " << setw(right_width) << surface.vertices.size() << '\n'
-  // << setw(left_width) << "faces"
-  // << " = " << setw(right_width) << surface.faces.size() << '\n'
-  // << setw(left_width) << "consistent"
-  // << " = " << setw(right_width) << surface.consistent() << '\n'
-  // << setw(left_width) << "oriented"
-  // << " = " << setw(right_width) << surface.oriented() << '\n'
-  // << setw(left_width) << "boundary"
-  // << " = " << setw(right_width) << surface.has_boundary() << '\n'
-  // << setw(left_width) << "cohomology groups"
-  // << " = " << setw(right_width) << surface.cohomology_group_count << '\n'
-  // << endl;
 
   cout << setw(left_width) << "vertices"
        << " = " << setw(right_width) << surface.vertices.size() << '\n'
@@ -386,27 +373,27 @@ void viewer::load_shader(const filesystem::path& path, const string& name) {
   shaders.add_name(path, name);
 }
 
-void viewer::load_surface_shader(const filesystem::path& path) {
-  try {
-    surface_shader_time = last_changed(path);
-    surface_shader = opengl::shader_from_file(path);
-    surface_shader_path = path;
-    view_should_update = true;
-  } catch (runtime_error& e) {
-    error("Failed to load surface shader from path '"s + path.string() +
-          "'.\n" + e.what());
-  }
-}
+// void viewer::load_surface_shader(const filesystem::path& path) {
+//   try {
+//     surface_shader_time = last_changed(path);
+//     surface_shader = opengl::shader_from_file(path);
+//     surface_shader_path = path;
+//     view_should_update = true;
+//   } catch (runtime_error& e) {
+//     error("Failed to load surface shader from path '"s + path.string() +
+//           "'.\n" + e.what());
+//   }
+// }
 
-void viewer::reload_surface_shader() {
-  if (surface_shader_path.empty()) return;
-  load_surface_shader(surface_shader_path);
-}
+// void viewer::reload_surface_shader() {
+//   if (surface_shader_path.empty()) return;
+//   load_surface_shader(surface_shader_path);
+// }
 
-void viewer::load_selection_shader(const filesystem::path& path) {
-  selection_shader = opengl::shader_from_file(path);
-  view_should_update = true;
-}
+// void viewer::load_selection_shader(const filesystem::path& path) {
+//   selection_shader = opengl::shader_from_file(path);
+//   view_should_update = true;
+// }
 
 void viewer::update_selection() {
   decltype(surface.faces) faces{};
@@ -438,27 +425,12 @@ void viewer::expand_selection() {
   update_selection();
 }
 
-// void viewer::select_cohomology_group() {
-//   selected_faces.resize(surface.faces.size());
-//   for (size_t i = 0; i < surface.faces.size(); ++i)
-//     selected_faces[i] = (surface.cohomology_groups[i] == group);
-//   update_selection();
-// }
-
 void viewer::select_connection_group() {
   selected_faces.resize(surface.faces.size());
   for (size_t i = 0; i < surface.faces.size(); ++i)
     selected_faces[i] = (surface.connection_groups[i] == group);
   update_selection();
 }
-
-// void viewer::select_oriented_cohomology_group() {
-//   selected_faces.resize(surface.faces.size());
-//   for (size_t i = 0; i < surface.faces.size(); ++i)
-//     selected_faces[i] = (surface.cohomology_groups[i] == group) &&
-//                         (surface.orientation[i] == orientation);
-//   update_selection();
-// }
 
 void viewer::reset_surface_curve_points() {
   surface_curve_points.vertices.clear();
@@ -609,10 +581,10 @@ void viewer::compute_surface_curve_points() {
   surface_curve_points.update();
 }
 
-void viewer::load_surface_curve_point_shader(czstring path) {
-  surface_curve_point_shader = opengl::shader_from_file(path);
-  view_should_update = true;
-}
+// void viewer::load_surface_curve_point_shader(czstring path) {
+//   surface_curve_point_shader = opengl::shader_from_file(path);
+//   view_should_update = true;
+// }
 
 void viewer::sort_surface_faces_by_depth() {
   auto faces = surface.faces;
@@ -626,7 +598,6 @@ void viewer::sort_surface_faces_by_depth() {
     const auto d2 = length(cam.position() - p2);
     return d1 > d2;
   });
-  // surface.device_faces.allocate_and_initialize(faces);
   surface.device_faces.allocate_and_initialize(faces);
 }
 

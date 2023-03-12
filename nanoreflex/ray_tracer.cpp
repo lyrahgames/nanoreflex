@@ -18,7 +18,8 @@ auto intersection(const ray& r, const triangle& f) noexcept
   return {u, v, t};
 }
 
-auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
+auto intersection(const ray& r,
+                  const deprecated::polyhedral_surface& surface) noexcept
     -> ray_polyhedral_surface_intersection {
   ray_polyhedral_surface_intersection result{};
   result.t = infinity;
@@ -35,7 +36,7 @@ auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
   return result;
 }
 
-auto intersection(const ray& r, const v2::polyhedral_surface& surface) noexcept
+auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
     -> ray_polyhedral_surface_intersection {
   ray_polyhedral_surface_intersection result{};
   result.t = infinity;

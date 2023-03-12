@@ -1,6 +1,6 @@
 #pragma once
+#include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/polyhedral_surface_2.hpp>
-#include <nanoreflex/scene.hpp>
 
 namespace nanoreflex {
 
@@ -33,10 +33,11 @@ struct ray_polyhedral_surface_intersection : ray_triangle_intersection {
   uint32_t f = -1;
 };
 
-auto intersection(const ray& r, const polyhedral_surface& scene) noexcept
+auto intersection(const ray& r,
+                  const deprecated::polyhedral_surface& scene) noexcept
     -> ray_polyhedral_surface_intersection;
 
-auto intersection(const ray& r, const v2::polyhedral_surface& scene) noexcept
+auto intersection(const ray& r, const polyhedral_surface& scene) noexcept
     -> ray_polyhedral_surface_intersection;
 
 }  // namespace nanoreflex

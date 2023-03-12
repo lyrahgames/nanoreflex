@@ -4,7 +4,7 @@
 #include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
 
-namespace nanoreflex::v2 {
+namespace nanoreflex {
 
 struct polyhedral_surface {
   using size_type = uint32;
@@ -112,4 +112,4 @@ struct scene : polyhedral_surface {
   opengl::element_buffer device_faces{};
 };
 
-}  // namespace nanoreflex::v2
+}  // namespace nanoreflex
