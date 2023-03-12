@@ -129,6 +129,9 @@ class viewer : viewer_context {
 
   surface_mesh_curve curve{};
   points surface_curve_points{};
+  surface_mesh_curve smooth_curve{};
+  points smooth_curve_points{};
+
   // opengl::shader_program surface_curve_point_shader{};
 
   // vector<uint32> curve_faces{};

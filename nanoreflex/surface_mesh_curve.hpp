@@ -13,14 +13,14 @@ struct surface_mesh_curve {
   void generate_control_points(const polyhedral_surface& surface) {
     if (face_strip.size() < 2) return;
 
-    // control_points.reserve(face_strip.size());
+    control_points.reserve(face_strip.size());
     control_points.resize(face_strip.size() - 1);
 
     for (size_t i = 0; i < face_strip.size() - 1; ++i) {
       const auto e = surface.common_edge(face_strip[i], face_strip[i + 1]);
       control_points[i] = surface.position(e, edge_weights[i]);
     }
-    // if (closed()) control_points.push_back(control_points.front());
+    if (closed()) control_points.push_back(control_points.front());
   }
 
   bool remove_artifacts(uint32 f) {
@@ -92,18 +92,12 @@ struct surface_mesh_curve {
     }
 
     if (closed()) {
-      const auto fl = face_strip[face_strip.size() - 2];
-      const auto f = face_strip.front();
+      const auto fl = face_strip.front();
       const auto fr = face_strip[1];
-
-      const auto el = surface.common_edge(fl, f);
-      edge_weights.back() = relax(control_points[control_points.size() - 2],
-                                  control_points[0], surface.position(el[0]),
-                                  surface.position(el[1]), edge_weights.back());
-      const auto er = surface.common_edge(f, fr);
-      edge_weights[0] = relax(control_points.back(), control_points[1],
-                              surface.position(el[0]), surface.position(el[1]),
-                              edge_weights[0]);
+      const auto e = surface.common_edge(fl, fr);
+      edge_weights[0] = relax(control_points[control_points.size() - 2],
+                              control_points[1], surface.position(e[0]),
+                              surface.position(e[1]), edge_weights[0]);
     }
 
     // for (size_t i = 1; i < face_strip.size() - 2; i += 2) {

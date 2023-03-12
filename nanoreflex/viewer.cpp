@@ -41,6 +41,7 @@ viewer::viewer() : viewer_context() {
 
   surface.setup();
   surface_curve_points.setup();
+  smooth_curve_points.setup();
 }
 
 void viewer::resize() {
@@ -101,7 +102,7 @@ void viewer::process_events() {
         case sf::Keyboard::S:
           // select_cohomology_group();
           // select_connection_group();
-          curve.smooth(surface);
+          smooth_curve.smooth(surface);
           compute_surface_curve_points();
           break;
         case sf::Keyboard::X:
@@ -248,9 +249,12 @@ void viewer::render() {
   // glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
 
   // surface_curve_point_shader.bind();
-  shaders.names["points"]->second.shader.bind();
+  shaders.names["initial"]->second.shader.bind();
   surface_curve_points.render();
   glDrawArrays(GL_LINE_STRIP, 0, surface_curve_points.vertices.size());
+  shaders.names["points"]->second.shader.bind();
+  smooth_curve_points.render();
+  glDrawArrays(GL_LINE_STRIP, 0, smooth_curve_points.vertices.size());
 }
 
 void viewer::run() {
@@ -544,6 +548,8 @@ void viewer::add_surface_curve_points(float x, float y) {
     curve.edge_weights.push_back(0.5f);
   }
 
+  smooth_curve = curve;
+
   // Compute edge weights
   // if (path.size() == 1) {
   //   const auto fid1 = curve_faces.back();
@@ -654,8 +660,11 @@ void viewer::compute_surface_curve_points() {
   surface_curve_points.vertices = points_from(surface, curve);
   surface_curve_points.update();
 
+  smooth_curve_points.vertices = points_from(surface, smooth_curve);
+  smooth_curve_points.update();
+
   vector<uint32> indices{};
-  for (auto fid : curve.face_strip) {
+  for (auto fid : smooth_curve.face_strip) {
     const auto& f = surface.faces[fid];
     indices.push_back(f[0]);
     indices.push_back(f[1]);
@@ -678,6 +687,8 @@ void viewer::close_surface_curve() {
   }
 
   curve.remove_closed_artifacts();
+
+  smooth_curve = curve;
 }
 
 // void viewer::load_surface_curve_point_shader(czstring path) {
