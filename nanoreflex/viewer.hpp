@@ -5,6 +5,7 @@
 // #include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/polyhedral_surface_2.hpp>
 #include <nanoreflex/shader_manager.hpp>
+#include <nanoreflex/surface_mesh_curve.hpp>
 #include <nanoreflex/utility.hpp>
 
 namespace nanoreflex {
@@ -106,8 +107,12 @@ class viewer : viewer_context {
   float bounding_radius;
   //
   // opengl::shader_program surface_shader{};
-  filesystem::path surface_shader_path{};
-  filesystem::file_time_type surface_shader_time{};
+  // filesystem::path surface_shader_path{};
+  // filesystem::file_time_type surface_shader_time{};
+
+  opengl::element_buffer surface_boundary{};
+  opengl::element_buffer surface_unoriented_edges{};
+  opengl::element_buffer surface_inconsistent_edges{};
 
   shader_manager shaders{};
 
@@ -120,12 +125,13 @@ class viewer : viewer_context {
 
   opengl::element_buffer edge_selection{};
 
+  surface_mesh_curve curve{};
   points surface_curve_points{};
   // opengl::shader_program surface_curve_point_shader{};
 
-  vector<uint32> curve_faces{};
-  vec2 curve_start, curve_end;
-  vector<float> curve_weights{};
+  // vector<uint32> curve_faces{};
+  // vec2 curve_start, curve_end;
+  // vector<float> curve_weights{};
 };
 
 }  // namespace nanoreflex

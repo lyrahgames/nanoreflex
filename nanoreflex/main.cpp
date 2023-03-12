@@ -18,6 +18,9 @@ int main(int argc, char* argv[]) {
   viewer.load_shader(path / "shader/points", "points");
   viewer.load_shader(path / "shader/contours", "contours");
   viewer.load_shader(path / "shader/selection", "selection");
+  viewer.load_shader(path / "shader/boundary", "boundary");
+  viewer.load_shader(path / "shader/unoriented", "unoriented");
+  viewer.load_shader(path / "shader/inconsistent", "inconsistent");
 
   // viewer.load_surface_shader(path / "shader/default");
   // viewer.load_selection_shader(path / "shader/selection");

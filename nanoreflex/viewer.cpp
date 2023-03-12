@@ -207,18 +207,37 @@ void viewer::render() {
   // shaders.names["contours"]->second.shader.bind();
   // surface.render();
 
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDepthFunc(GL_ALWAYS);
   // selection_shader.bind();
-  shaders.names["selection"]->second.shader.bind();
-  // surface.device_handle.bind();
-  surface.device_handle.bind();
-  selection.bind();
-  glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-  edge_selection.bind();
-  glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
+  // shaders.names["selection"]->second.shader.bind();
+
+  surface.device_handle.bind();
+
+  shaders.names["boundary"]->second.shader.bind();
+  surface_boundary.bind();
+  glDrawElements(GL_LINES, surface_boundary.size() / sizeof(GL_UNSIGNED_INT),
+                 GL_UNSIGNED_INT, 0);
+
+  shaders.names["unoriented"]->second.shader.bind();
+  surface_unoriented_edges.bind();
+  glDrawElements(GL_LINES,
+                 surface_unoriented_edges.size() / sizeof(GL_UNSIGNED_INT),
+                 GL_UNSIGNED_INT, 0);
+
+  shaders.names["inconsistent"]->second.shader.bind();
+  surface_inconsistent_edges.bind();
+  glDrawElements(GL_LINES,
+                 surface_inconsistent_edges.size() / sizeof(GL_UNSIGNED_INT),
+                 GL_UNSIGNED_INT, 0);
+
+  // selection.bind();
+  // glDrawElements(GL_TRIANGLES, selection.size(), GL_UNSIGNED_INT, 0);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  // edge_selection.bind();
+  // glDrawElements(GL_LINES, edge_selection.size(), GL_UNSIGNED_INT, 0);
 
   // surface_curve_point_shader.bind();
   shaders.names["points"]->second.shader.bind();
@@ -317,21 +336,44 @@ void viewer::handle_surface_load_task() {
   cout << "done." << endl << '\n';
   surface_load_task = {};
 
-  // surface.update();
   surface.update();
   fit_view();
   print_surface_info();
 
-  // vector<uint32> lines{};
-  // for (const auto& [e, info] : surface.edges) {
-  //   if (!surface.oriented() || surface.edges.contains({e[1], e[0]})) continue;
-  //   // cout << "(" << e[0] << ", " << e[1] << ") : " << info.face[0] << ", "
-  //   //      << info.face[1] << ", " << surface.edges[{e[1], e[0]}].face[0] << '\n';
-  //   lines.push_back(e[0]);
-  //   lines.push_back(e[1]);
-  // }
-  // edge_selection.allocate_and_initialize(lines);
-  // cout << "unoriented edges = " << lines.size() << endl;
+  vector<uint32> lines{};
+  for (size_t fid = 0; fid < surface.faces.size(); ++fid) {
+    if (surface.face_neighbors[fid][0] == polyhedral_surface::invalid) {
+      lines.push_back(surface.faces[fid][0]);
+      lines.push_back(surface.faces[fid][1]);
+    }
+    if (surface.face_neighbors[fid][1] == polyhedral_surface::invalid) {
+      lines.push_back(surface.faces[fid][1]);
+      lines.push_back(surface.faces[fid][2]);
+    }
+    if (surface.face_neighbors[fid][2] == polyhedral_surface::invalid) {
+      lines.push_back(surface.faces[fid][2]);
+      lines.push_back(surface.faces[fid][0]);
+    }
+  }
+  surface_boundary.allocate_and_initialize(lines);
+
+  lines.clear();
+  for (const auto& [e, info] : surface.edges) {
+    if (info.oriented()) continue;
+    const auto e2 = surface.common_edge(info.face[0], info.face[1]);
+    lines.push_back(e2[0]);
+    lines.push_back(e2[1]);
+  }
+  surface_unoriented_edges.allocate_and_initialize(lines);
+
+  lines.clear();
+  for (const auto& [e, info] : surface.edges) {
+    if (info.oriented() || !surface.edges.contains({e[1], e[0]})) continue;
+    const auto e2 = surface.common_edge(info.face[0], info.face[1]);
+    lines.push_back(e2[0]);
+    lines.push_back(e2[1]);
+  }
+  surface_inconsistent_edges.allocate_and_initialize(lines);
 }
 
 void viewer::fit_view() {
@@ -433,11 +475,12 @@ void viewer::select_connection_group() {
 }
 
 void viewer::reset_surface_curve_points() {
+  curve.clear();
   surface_curve_points.vertices.clear();
   surface_curve_points.update();
   // surface_curve_intersections.clear();
-  curve_faces.clear();
-  curve_weights.clear();
+  // curve_faces.clear();
+  // curve_weights.clear();
 }
 
 void viewer::add_surface_curve_points(float x, float y) {
@@ -445,24 +488,34 @@ void viewer::add_surface_curve_points(float x, float y) {
   const auto p = intersection(r, surface);
   if (!p) return;
 
-  if (curve_faces.empty()) {
-    curve_faces.push_back(p.f);
-    curve_start = {p.u, p.v};
-    curve_end = {p.u, p.v};
+  // if (curve_faces.empty()) {
+  //   curve_faces.push_back(p.f);
+  //   curve_start = {p.u, p.v};
+  //   curve_end = {p.u, p.v};
+  //   return;
+  // }
+
+  if (curve.face_strip.empty()) {
+    curve.face_strip.push_back(p.f);
     return;
   }
 
   const auto remove_artifacts = [&](uint32 f) {
-    const auto fid = curve_faces.back();
+    // const auto fid = curve_faces.back();
+    const auto fid = curve.face_strip.back();
     if (f == fid) {
-      curve_end = {p.u, p.v};
+      // curve_end = {p.u, p.v};
       return true;
     }
-    if (curve_faces.size() >= 2) {
-      const auto fid2 = curve_faces[curve_faces.size() - 2];
+    // if (curve_faces.size() >= 2) {
+    if (curve.face_strip.size() >= 2) {
+      // const auto fid2 = curve_faces[curve_faces.size() - 2];
+      const auto fid2 = curve.face_strip[curve.face_strip.size() - 2];
       if (f == fid2) {
-        curve_faces.pop_back();
-        curve_weights.pop_back();
+        // curve_faces.pop_back();
+        // curve_weights.pop_back();
+        curve.face_strip.pop_back();
+        curve.edge_weights.pop_back();
         return true;
       }
     }
@@ -470,8 +523,17 @@ void viewer::add_surface_curve_points(float x, float y) {
   };
 
   if (remove_artifacts(p.f)) return;
-  const auto fid = curve_faces.back();
+  // const auto fid = curve_faces.back();
+  const auto fid = curve.face_strip.back();
   const auto path = surface.shortest_face_path(fid, p.f);
+
+  for (auto x : path) {
+    if (remove_artifacts(x)) continue;
+    // curve_faces.push_back(x);
+    // curve_weights.push_back(0.5f);
+    curve.face_strip.push_back(x);
+    curve.edge_weights.push_back(0.5f);
+  }
 
   // Compute edge weights
   // if (path.size() == 1) {
@@ -556,28 +618,31 @@ void viewer::add_surface_curve_points(float x, float y) {
   //     curve_weights.push_back(r2);
   //   }
   // } else {
-  for (auto x : path) {
-    if (remove_artifacts(x)) continue;
-    curve_faces.push_back(x);
-    curve_weights.push_back(0.5f);
-  }
+  // for (auto x : path) {
+  //   if (remove_artifacts(x)) continue;
+  //   // curve_faces.push_back(x);
+  //   // curve_weights.push_back(0.5f);
+  //   curve.face_strip.push_back(x);
+  //   curve.edge_weights.push_back(0.5f);
   // }
-  curve_end = {p.u, p.v};
+  // }
+  // curve_end = {p.u, p.v};
 }
 
 void viewer::compute_surface_curve_points() {
   // Update for Rendering
-  surface_curve_points.vertices.clear();
-  surface_curve_points.vertices.push_back(
-      surface.position(curve_faces.front(), curve_start.x, curve_start.y));
-  for (size_t i = 0; i < curve_faces.size() - 1; ++i) {
-    const auto e = surface.common_edge(curve_faces[i], curve_faces[i + 1]);
-    surface_curve_points.vertices.push_back(  //
-        surface.vertices[e[0]].position * (1.0f - curve_weights[i]) +
-        surface.vertices[e[1]].position * curve_weights[i]);
-  }
-  surface_curve_points.vertices.push_back(
-      surface.position(curve_faces.back(), curve_end.x, curve_end.y));
+  // surface_curve_points.vertices.clear();
+  // surface_curve_points.vertices.push_back(
+  //     surface.position(curve_faces.front(), curve_start.x, curve_start.y));
+  // for (size_t i = 0; i < curve_faces.size() - 1; ++i) {
+  //   const auto e = surface.common_edge(curve_faces[i], curve_faces[i + 1]);
+  //   surface_curve_points.vertices.push_back(  //
+  //       surface.vertices[e[0]].position * (1.0f - curve_weights[i]) +
+  //       surface.vertices[e[1]].position * curve_weights[i]);
+  // }
+  // surface_curve_points.vertices.push_back(
+  //     surface.position(curve_faces.back(), curve_end.x, curve_end.y));
+  surface_curve_points.vertices = points_from(surface, curve);
   surface_curve_points.update();
 }
 
