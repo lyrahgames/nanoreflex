@@ -80,9 +80,6 @@ void viewer::process_events() {
         case sf::Keyboard::Escape:
           running = false;
           break;
-        // case sf::Keyboard::R:
-        //   reload_surface_shader();
-        //   break;
         case sf::Keyboard::Num1:
           set_y_as_up();
           break;
@@ -92,33 +89,22 @@ void viewer::process_events() {
         case sf::Keyboard::Num0:
           reset_surface_curve_points();
           break;
-        case sf::Keyboard::Space:
-          // select_face(mouse_pos.x, mouse_pos.y);
-          // add_surface_curve_points(mouse_pos.x, mouse_pos.y);
-          break;
         case sf::Keyboard::N:
           expand_selection();
           break;
         case sf::Keyboard::S:
-          // select_cohomology_group();
-          // select_connection_group();
           smooth_curve.smooth(surface);
           compute_surface_curve_points();
+          curve.print(surface);
           break;
         case sf::Keyboard::X:
           ++group;
-          // select_cohomology_group();
           select_connection_group();
           break;
         case sf::Keyboard::Y:
           --group;
-          // select_cohomology_group();
           select_connection_group();
           break;
-        // case sf::Keyboard::O:
-        //   orientation = !orientation;
-        //   select_oriented_cohomology_group();
-        //   break;
         case sf::Keyboard::Z:
           sort_surface_faces_by_depth();
           break;
@@ -126,21 +112,32 @@ void viewer::process_events() {
           close_surface_curve();
           compute_surface_curve_points();
           break;
+        case sf::Keyboard::R:
+          smooth_curve.reflect(surface);
+          compute_surface_curve_points();
+          break;
       }
     }
   }
 
   if (window.hasFocus()) {
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-      turn({-0.01 * mouse_move.x, 0.01 * mouse_move.y});
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
-      shift({mouse_move.x, mouse_move.y});
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+      if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
+        shift({mouse_move.x, mouse_move.y});
+      else
+        turn({-0.01 * mouse_move.x, 0.01 * mouse_move.y});
+    }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
       if (mouse_move != sf::Vector2i{}) {
         add_surface_curve_points(mouse_pos.x, mouse_pos.y);
         compute_surface_curve_points();
       }
+    }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+      smooth_curve.smooth(surface);
+      compute_surface_curve_points();
     }
   }
 }
@@ -159,21 +156,6 @@ void viewer::update_view() {
   cam.set_near_and_far(std::max(1e-3f * radius, radius - bounding_radius),
                        radius + bounding_radius);
 
-  // surface_shader.bind();
-  // surface_shader  //
-  //     .set("projection", cam.projection_matrix())
-  //     .set("view", cam.view_matrix());
-
-  // selection_shader.bind();
-  // selection_shader  //
-  //     .set("projection", cam.projection_matrix())
-  //     .set("view", cam.view_matrix());
-
-  // surface_curve_point_shader.bind();
-  // surface_curve_point_shader  //
-  //     .set("projection", cam.projection_matrix())
-  //     .set("view", cam.view_matrix());
-
   shaders.apply([this](opengl::shader_program_handle shader) {
     shader.bind()
         .set("projection", cam.projection_matrix())
@@ -188,11 +170,6 @@ void viewer::update() {
     update_view();
     view_should_update = false;
   }
-
-  // if (surface_shader_time != last_changed(surface_shader_path)) {
-  //   info("Surface shader has changed on disk. Reloading triggered.");
-  //   reload_surface_shader();
-  // }
 
   shaders.reload([this](opengl::shader_program_handle shader) {
     shader.bind()
@@ -314,12 +291,10 @@ void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
     try {
       const auto start = clock::now();
+
       surface.host() = polyhedral_surface_from(path);
+
       const auto mid = clock::now();
-      // surface.generate_edges();
-      // surface.generate_vertex_neighbors();
-      // surface.generate_face_neighbors();
-      // surface.generate_cohomology_groups();
 
       surface.generate_topological_vertices();
       surface.generate_edges();
@@ -427,28 +402,6 @@ void viewer::load_shader(const filesystem::path& path, const string& name) {
   shaders.add_name(path, name);
 }
 
-// void viewer::load_surface_shader(const filesystem::path& path) {
-//   try {
-//     surface_shader_time = last_changed(path);
-//     surface_shader = opengl::shader_from_file(path);
-//     surface_shader_path = path;
-//     view_should_update = true;
-//   } catch (runtime_error& e) {
-//     error("Failed to load surface shader from path '"s + path.string() +
-//           "'.\n" + e.what());
-//   }
-// }
-
-// void viewer::reload_surface_shader() {
-//   if (surface_shader_path.empty()) return;
-//   load_surface_shader(surface_shader_path);
-// }
-
-// void viewer::load_selection_shader(const filesystem::path& path) {
-//   selection_shader = opengl::shader_from_file(path);
-//   view_should_update = true;
-// }
-
 void viewer::update_selection() {
   decltype(surface.faces) faces{};
   for (size_t i = 0; i < selected_faces.size(); ++i)
@@ -493,9 +446,6 @@ void viewer::reset_surface_curve_points() {
   smooth_curve_points.vertices.clear();
   smooth_curve_points.update();
   selection.allocate_and_initialize(nullptr, 0);
-  // surface_curve_intersections.clear();
-  // curve_faces.clear();
-  // curve_weights.clear();
 }
 
 void viewer::add_surface_curve_points(float x, float y) {
@@ -503,53 +453,7 @@ void viewer::add_surface_curve_points(float x, float y) {
   const auto p = intersection(r, surface);
   if (!p) return;
 
-  // if (curve_faces.empty()) {
-  //   curve_faces.push_back(p.f);
-  //   curve_start = {p.u, p.v};
-  //   curve_end = {p.u, p.v};
-  //   return;
-  // }
-
-  if (curve.face_strip.empty()) {
-    curve.face_strip.push_back(p.f << 2);
-    return;
-  }
-
-  const auto remove_artifacts = [&](uint32 f) {
-    // const auto fid = curve_faces.back();
-    const auto fid = curve.face_strip.back() >> 2;
-    if (f == fid) {
-      // curve_end = {p.u, p.v};
-      return true;
-    }
-    // if (curve_faces.size() >= 2) {
-    if (curve.face_strip.size() >= 2) {
-      // const auto fid2 = curve_faces[curve_faces.size() - 2];
-      const auto fid2 = curve.face_strip[curve.face_strip.size() - 2] >> 2;
-      if (f == fid2) {
-        // curve_faces.pop_back();
-        // curve_weights.pop_back();
-        curve.face_strip.pop_back();
-        curve.edge_weights.pop_back();
-        return true;
-      }
-    }
-    return false;
-  };
-
-  if (remove_artifacts(p.f)) return;
-  // const auto fid = curve_faces.back();
-  const auto fid = curve.face_strip.back() >> 2;
-  const auto path = surface.shortest_face_path(fid, p.f);
-
-  for (auto x : path) {
-    if (remove_artifacts(x)) continue;
-    // curve_faces.push_back(x);
-    // curve_weights.push_back(0.5f);
-    curve.face_strip.push_back(x << 2);
-    curve.edge_weights.push_back(0.5f);
-  }
-
+  curve.add_face(p.f, surface);
   smooth_curve = curve;
 
   // Compute edge weights
@@ -647,18 +551,6 @@ void viewer::add_surface_curve_points(float x, float y) {
 }
 
 void viewer::compute_surface_curve_points() {
-  // Update for Rendering
-  // surface_curve_points.vertices.clear();
-  // surface_curve_points.vertices.push_back(
-  //     surface.position(curve_faces.front(), curve_start.x, curve_start.y));
-  // for (size_t i = 0; i < curve_faces.size() - 1; ++i) {
-  //   const auto e = surface.common_edge(curve_faces[i], curve_faces[i + 1]);
-  //   surface_curve_points.vertices.push_back(  //
-  //       surface.vertices[e[0]].position * (1.0f - curve_weights[i]) +
-  //       surface.vertices[e[1]].position * curve_weights[i]);
-  // }
-  // surface_curve_points.vertices.push_back(
-  //     surface.position(curve_faces.back(), curve_end.x, curve_end.y));
   surface_curve_points.vertices = points_from(surface, curve);
   surface_curve_points.update();
 
@@ -676,27 +568,9 @@ void viewer::compute_surface_curve_points() {
 }
 
 void viewer::close_surface_curve() {
-  if (curve.face_strip.size() < 3) return;
-
-  const auto fid1 = curve.face_strip.front() >> 2;
-  const auto fid2 = curve.face_strip.back() >> 2;
-  const auto path = surface.shortest_face_path(fid2, fid1);
-
-  for (auto x : path) {
-    if (curve.remove_artifacts(x)) continue;
-    curve.face_strip.push_back(x << 2);
-    curve.edge_weights.push_back(0.5f);
-  }
-
-  curve.remove_closed_artifacts();
-
+  curve.close(surface);
   smooth_curve = curve;
 }
-
-// void viewer::load_surface_curve_point_shader(czstring path) {
-//   surface_curve_point_shader = opengl::shader_from_file(path);
-//   view_should_update = true;
-// }
 
 void viewer::sort_surface_faces_by_depth() {
   auto faces = surface.faces;

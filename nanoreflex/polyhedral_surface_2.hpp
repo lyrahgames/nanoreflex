@@ -58,6 +58,7 @@ struct polyhedral_surface {
 
   auto shortest_face_path(uint32 src, uint32 dst) const -> vector<uint32>;
   auto common_edge(uint32 fid1, uint32 fid2) const -> edge;
+  auto location(uint32 fid1, uint32 fid2) const -> uint32;
 
   vector<vertex_id> topological_vertices{};
   unordered_map<edge, edge::info, edge::hasher> edges{};

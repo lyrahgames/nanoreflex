@@ -176,7 +176,7 @@ auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
       if (d >= distances[neighbor]) continue;
 
       distances[neighbor] = d;
-      previous[neighbor] = current;
+      previous[neighbor] = (current << 2) | uint32(i);
       queue.push_back(neighbor);
     }
   } while (!queue.empty() && !visited[dst]);
@@ -185,9 +185,16 @@ auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
 
   // Compute count and path.
   uint32 count = 0;
-  for (auto i = dst; i != src; i = previous[i]) ++count;
+  for (auto i = dst; i != src; i = (previous[i] >> 2)) ++count;
   vector<uint32> path(count);
-  for (auto i = dst; i != src; i = previous[i]) path[--count] = i;
+  // for (auto i = dst; i != src; i = (previous[i] >> 2))
+  //   path[--count] = uint32(i << 2) | uint32(previous[i] & 0b11);
+  uint32 l = 0;
+  for (auto i = dst; i != src;) {
+    path[--count] = (i << 2) | l;
+    l = previous[i] & 0b11;
+    i = previous[i] >> 2;
+  }
   return path;
 }
 
@@ -219,6 +226,17 @@ auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
   if ((face_neighbors[fid2][2] >> 2) == fid1) return {f2[2], f2[0]};
 
   throw runtime_error("Triangles have no common edge.");
+}
+
+auto polyhedral_surface::location(uint32 fid1, uint32 fid2) const -> uint32 {
+  const auto& f1 = faces[fid1];
+  const auto& f2 = faces[fid2];
+
+  if ((face_neighbors[fid1][0] >> 2) == fid2) return 0;
+  if ((face_neighbors[fid1][1] >> 2) == fid2) return 1;
+  if ((face_neighbors[fid1][2] >> 2) == fid2) return 2;
+
+  throw runtime_error("Triangles are not adjacent to each other.");
 }
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface {
