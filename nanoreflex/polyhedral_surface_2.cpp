@@ -88,30 +88,68 @@ void polyhedral_surface::generate_face_neighbors() {
   }
 }
 
-void polyhedral_surface::generate_connection_groups() {
-  connection_groups.assign(faces.size(), invalid);
+void polyhedral_surface::identify_face_components() {
+  face_component.assign(faces.size(), invalid);
 
   vector<face_id> face_stack{};
-  group_id group = 0;
+  component_id component = 0;
 
   for (face_id fid = 0; fid < faces.size(); ++fid) {
-    if (connection_groups[fid] != invalid) continue;
+    if (face_component[fid] != invalid) continue;
     face_stack.push_back(fid);
     while (!face_stack.empty()) {
       const auto f = face_stack.back();
       face_stack.pop_back();
-      connection_groups[f] = group;
+      face_component[f] = component;
       const auto& face = faces[f];
       for (int i = 0; i < 3; ++i) {
         const auto nid = (face_neighbors[f][i] >> 2);
         if (nid == invalid) continue;
-        if (connection_groups[nid] != invalid) continue;
+        if (face_component[nid] != invalid) continue;
         face_stack.push_back(nid);
       }
     }
-    ++group;
+    ++component;
   }
-  connection_group_count = group;
+  component_count = component;
+}
+
+void polyhedral_surface::generate_components() {
+  // Get the count of faces per component.
+  //
+  component_faces_offset.assign(component_count + 1, 0);
+  for (auto component : face_component)  //
+    ++component_faces_offset[component + 1];
+
+  // Calculate cumulative sum.
+  //
+  for (size_t i = 2; i < component_faces_offset.size(); ++i)
+    component_faces_offset[i] += component_faces_offset[i - 1];
+
+  component_faces.resize(faces.size());
+  for (size_t fid = 0; fid < face_component.size(); ++fid) {
+    const auto x = component_faces_offset[face_component[fid]]++;
+    component_faces[x] = fid;
+  }
+
+  for (size_t i = component_faces_offset.size(); i > 1; --i)
+    component_faces_offset[i - 1] = component_faces_offset[i - 2];
+  component_faces_offset[0] = 0;
+
+  // Check
+  //
+  for (size_t component = 0; component < component_count; ++component) {
+    for (size_t i = component_faces_offset[component];
+         i < component_faces_offset[component + 1]; ++i)
+      assert(component == face_component[component_faces[i]]);
+  }
+  //
+  auto counts = component_faces_offset;
+  for (size_t fid = 0; fid < faces.size(); ++fid) {
+    const auto component = face_component[fid];
+    const auto index = counts[component]++;
+    assert(fid == component_faces[index]);
+  }
 }
 
 bool polyhedral_surface::oriented() const noexcept {

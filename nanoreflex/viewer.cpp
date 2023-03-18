@@ -99,11 +99,11 @@ void viewer::process_events() {
           break;
         case sf::Keyboard::X:
           ++group;
-          select_connection_group();
+          select_component();
           break;
         case sf::Keyboard::Y:
           --group;
-          select_connection_group();
+          select_component();
           break;
         case sf::Keyboard::Z:
           sort_surface_faces_by_depth();
@@ -301,7 +301,8 @@ void viewer::load_surface(const filesystem::path& path) {
       surface.generate_topological_vertices();
       surface.generate_edges();
       surface.generate_face_neighbors();
-      surface.generate_connection_groups();
+      surface.identify_face_components();
+      surface.generate_components();
       const auto end = clock::now();
 
       // Evaluate loading and processing time.
@@ -394,8 +395,8 @@ void viewer::print_surface_info() {
        << " = " << setw(right_width) << surface.oriented() << '\n'
        << setw(left_width) << "boundary"
        << " = " << setw(right_width) << surface.has_boundary() << '\n'
-       << setw(left_width) << "connection groups"
-       << " = " << setw(right_width) << surface.connection_group_count << '\n'
+       << setw(left_width) << "components"
+       << " = " << setw(right_width) << surface.component_count << '\n'
        << endl;
 }
 
@@ -434,10 +435,10 @@ void viewer::expand_selection() {
   update_selection();
 }
 
-void viewer::select_connection_group() {
+void viewer::select_component() {
   selected_faces.resize(surface.faces.size());
   for (size_t i = 0; i < surface.faces.size(); ++i)
-    selected_faces[i] = (surface.connection_groups[i] == group);
+    selected_faces[i] = (surface.face_component[i] == group);
   update_selection();
 }
 

@@ -19,7 +19,10 @@ struct polyhedral_surface {
   using vertex_id = uint32;
 
   template <typename type>
-  struct vertex_map : vector<type> {};
+  struct vertex_map : vector<type> {
+    using base = vector<type>;
+    using base::base;
+  };
 
   struct edge : array<uint32, 2> {
     struct info {
@@ -39,13 +42,21 @@ struct polyhedral_surface {
   struct face : array<vertex_id, 3> {};
   using face_id = uint32;
 
+  template <typename type>
+  struct face_map : vector<type> {
+    using base = vector<type>;
+    using base::base;
+  };
+
   vector<vertex> vertices{};
   vector<face> faces{};
 
   void generate_topological_vertices();
   void generate_edges();
   void generate_face_neighbors();
-  void generate_connection_groups();
+
+  void identify_face_components();
+  void generate_components();
 
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
@@ -65,9 +76,16 @@ struct polyhedral_surface {
   vector<array<uint32, 3>> face_neighbors{};
 
   // Face map
-  using group_id = face_id;  // Every face could be part
-  vector<group_id> connection_groups{};
-  group_id connection_group_count = 0;
+  // using group_id = face_id;  // Every face could be part
+  using component_id = face_id;
+  face_map<component_id> face_component{};
+  component_id component_count = 0;
+  vector<face_id> component_faces_offset{};
+  vector<face_id> component_faces{};
+
+  // auto component(face_id) const noexcept -> component_id;
+  // auto faces(component_id) const noexcept -> range::view...;
+  // auto face_index_iterators(component_id) const noexcept -> pair<>;
 };
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;
