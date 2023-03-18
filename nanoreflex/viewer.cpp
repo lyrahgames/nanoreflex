@@ -113,7 +113,8 @@ void viewer::process_events() {
           compute_surface_curve_points();
           break;
         case sf::Keyboard::R:
-          smooth_curve.reflect(surface);
+          // smooth_curve.reflect(surface);
+          smooth_curve = smooth_curve.reflect(surface);
           compute_surface_curve_points();
           break;
       }
@@ -551,10 +552,14 @@ void viewer::add_surface_curve_points(float x, float y) {
 }
 
 void viewer::compute_surface_curve_points() {
-  surface_curve_points.vertices = points_from(surface, curve);
+  // surface_curve_points.vertices = points_from(surface, curve);
+  curve.generate_control_points(surface);
+  surface_curve_points.vertices = curve.control_points;
   surface_curve_points.update();
 
-  smooth_curve_points.vertices = points_from(surface, smooth_curve);
+  // smooth_curve_points.vertices = points_from(surface, smooth_curve);
+  smooth_curve.generate_control_points(surface);
+  smooth_curve_points.vertices = smooth_curve.control_points;
   smooth_curve_points.update();
 
   vector<uint32> indices{};

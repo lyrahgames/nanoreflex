@@ -11,17 +11,41 @@ struct surface_mesh_curve {
   }
 
   void generate_control_points(const polyhedral_surface& surface) {
-    if (face_strip.size() < 2) return;
+    // if (face_strip.size() < 2) return;
 
-    control_points.reserve(face_strip.size());
-    control_points.resize(face_strip.size() - 1);
+    // control_points.reserve(face_strip.size());
+    // control_points.resize(face_strip.size() - 1);
+
+    // for (size_t i = 0; i < face_strip.size() - 1; ++i) {
+    //   const auto e =
+    //       surface.common_edge(face_strip[i] >> 2, face_strip[i + 1] >> 2);
+    //   control_points[i] = surface.position(e, edge_weights[i]);
+    // }
+    // if (closed()) control_points.push_back(control_points.front());
+
+    control_points.clear();
+    if (face_strip.empty()) return;
+    control_points.reserve(face_strip.size() + 1);
+
+    if (!closed())
+      control_points.push_back(
+          surface.position(face_strip.front() >> 2, 1 / 3.0f, 1 / 3.0f));
+    else
+      control_points.push_back({});
 
     for (size_t i = 0; i < face_strip.size() - 1; ++i) {
       const auto e =
           surface.common_edge(face_strip[i] >> 2, face_strip[i + 1] >> 2);
-      control_points[i] = surface.position(e, edge_weights[i]);
+      control_points.push_back(surface.position(e, edge_weights[i]));
     }
-    if (closed()) control_points.push_back(control_points.front());
+
+    if (!closed())
+      control_points.push_back(
+          surface.position(face_strip.back() >> 2, 1 / 3.0f, 1 / 3.0f));
+    else {
+      control_points.front() = control_points.back();
+      control_points.push_back(control_points[1]);
+    }
   }
 
   bool remove_artifacts(uint32 f) {
@@ -98,7 +122,9 @@ struct surface_mesh_curve {
   }
 
   bool closed() const {
-    return (face_strip.front() >> 2) == (face_strip.back() >> 2);
+    // return (face_strip.front() >> 2) == (face_strip.back() >> 2);
+    return (face_strip.size() > 2) &&
+           ((face_strip.front() >> 2) == (face_strip.back() >> 2));
   }
 
   void smooth(const polyhedral_surface& surface) {
@@ -121,98 +147,220 @@ struct surface_mesh_curve {
       const auto qx = length(q - qy * vn);
 
       const auto t = (py * qx - qy * px) / (qx - px) * ivl;
-      const auto relaxation = 1.0f;
+      const auto relaxation = 0.5f;
       return std::clamp((1 - relaxation) * t0 + relaxation * t, 0.0f, 1.0f);
     };
 
-    for (size_t i = 1; i < control_points.size() - 1; ++i) {
+    // for (size_t i = 1; i < control_points.size() - 1; ++i) {
+    //   const auto fl = face_strip[i - 1] >> 2;
+    //   const auto fr = face_strip[i] >> 2;
+    //   const auto e = surface.common_edge(fl, fr);
+    //   edge_weights[i - 1] = relax(control_points[i - 1], control_points[i + 1],
+    //                               surface.position(e[0]),
+    //                               surface.position(e[1]), edge_weights[i - 1]);
+    // }
+
+    vector<float> new_edge_weights(edge_weights.size());
+    for (size_t i = 0; i < edge_weights.size(); ++i) {
       const auto fl = face_strip[i] >> 2;
       const auto fr = face_strip[i + 1] >> 2;
       const auto e = surface.common_edge(fl, fr);
-      edge_weights[i] = relax(control_points[i - 1], control_points[i + 1],
-                              surface.position(e[0]), surface.position(e[1]),
-                              edge_weights[i]);
+      new_edge_weights[i] = relax(control_points[i], control_points[i + 2],
+                                  surface.position(e[0]),
+                                  surface.position(e[1]), edge_weights[i]);
     }
+    edge_weights.swap(new_edge_weights);
 
-    if (closed()) {
-      const auto fl = face_strip.front() >> 2;
-      const auto fr = face_strip[1] >> 2;
-      const auto e = surface.common_edge(fl, fr);
-      edge_weights[0] = relax(control_points[control_points.size() - 2],
-                              control_points[1], surface.position(e[0]),
-                              surface.position(e[1]), edge_weights[0]);
-    }
+    // if (closed()) {
+    //   const auto fl = face_strip.front() >> 2;
+    //   const auto fr = face_strip[1] >> 2;
+    //   const auto e = surface.common_edge(fl, fr);
+    //   edge_weights[0] = relax(control_points[control_points.size() - 2],
+    //                           control_points[1], surface.position(e[0]),
+    //                           surface.position(e[1]), edge_weights[0]);
+    // }
   }
 
-  void reflect(const polyhedral_surface& surface) {
-    if (face_strip.size() < 5) return;
+  auto reflect(const polyhedral_surface& surface) -> surface_mesh_curve {
+    // if (face_strip.size() < 5) return;
 
-    const auto first = 1;
+    cout << "Reflection" << endl;
+    surface_mesh_curve result{};
 
-    auto f = face_strip[first];
+    auto f = face_strip[0];
     auto fid = f >> 2;
     auto loc = f & 0b11;
     f = surface.face_neighbors[fid][loc];
     fid = f >> 2;
     loc = f & 0b11;
 
-    auto last = first + 1;
-    auto f2 = face_strip[last];
+    auto f2 = face_strip[1];
     auto fid2 = f2 >> 2;
     auto loc2 = f2 & 0b11;
 
     const auto step = (3 + loc2 - loc) % 3;
+    const auto inner =
+        surface.position(surface.faces[fid2][(loc + 2 - step) % 3]);
+    auto outer1 = control_points[0];
+    auto outer2 = surface.position(surface.faces[fid2][(loc + step - 1) % 3]);
+
+    auto curve_angle =
+        acos(dot(normalize(outer1 - inner), normalize(outer2 - inner)));
+    outer1 = outer2;
+
     bool change = false;
 
-    do {
+    size_t i = 2;
+    for (; i < face_strip.size() - 1; ++i) {
       f = surface.face_neighbors[fid2][loc2];
       fid = f >> 2;
       loc = f & 0b11;
-      ++last;
-      f2 = face_strip[last];
+      f2 = face_strip[i];
       fid2 = f2 >> 2;
       loc2 = f2 & 0b11;
       const auto s = (3 + loc2 - loc) % 3;
-      change = (s != step);
-    } while (!change);
+      if (s != step) break;
 
-    for (size_t i = 0; i < face_strip.size(); ++i) {
-      const auto fid = face_strip[i] >> 2;
-      const auto loc = face_strip[i] & 0b11;
-      cout << "(" << fid << "," << loc << ") ";
+      outer2 = surface.position(surface.faces[fid2][(loc + step - 1) % 3]);
+      curve_angle +=
+          acos(dot(normalize(outer1 - inner), normalize(outer2 - inner)));
+      outer1 = outer2;
     }
-    cout << endl;
+    size_t index = i;
+    cout << "index = " << index << endl;
+    if (step == 1)
+      cout << "right" << endl;
+    else
+      cout << "left" << endl;
 
-    cout << first << ", " << last << endl;
-    for (size_t i = first; i <= last; ++i) {
-      const auto fid = face_strip[i] >> 2;
-      const auto loc = face_strip[i] & 0b11;
-      cout << "(" << fid << "," << loc << ") ";
-    }
-    cout << endl;
+    outer2 = control_points[index + 1];
+    curve_angle +=
+        acos(dot(normalize(outer1 - inner), normalize(outer2 - inner)));
 
-    vector<uint32> old_face_strip = face_strip;
-    clear();
-    add_face(old_face_strip[0] >> 2, surface);
-    const auto rstep = (step == 1) ? 2 : 1;
-    const auto shift = (step == 1) ? -1 : 1;
-    auto fend = old_face_strip[last] >> 2;
-    f = old_face_strip[first];
-    fid = f >> 2;
-    loc = ((f & 0b11) + shift) % 3;
-    cout << "(" << fid << "," << loc << ") ";
-    add_face(fid, surface);
-    do {
-      f = surface.face_neighbors[fid][loc];
+    cout << "curve angle = " << curve_angle * 180 / pi << "°" << endl;
+
+    if (curve_angle <= pi) {
+      for (size_t i = 0; i < index; ++i) {
+        result.face_strip.push_back(face_strip[i]);
+        result.edge_weights.push_back(0.5f);
+      }
+    } else {
+      for (size_t i = 0; i <= index; ++i) {
+        const auto f = face_strip[i];
+        const auto fid = f >> 2;
+        const auto loc = f & 0b11;
+        cout << "(" << fid << "," << loc << ") ";
+      }
+      cout << endl;
+
+      const auto rstep = (step == 1) ? 2 : 1;
+      const auto shift = (step == 1) ? -1 : 1;
+
+      const auto flast = face_strip[index] >> 2;
+      f = face_strip[0];
       fid = f >> 2;
-      loc = ((f & 0b11) + rstep) % 3;
-      cout << "(" << fid << "," << loc << ") ";
-      add_face(fid, surface);
-    } while (fid != fend);
-    cout << endl;
+      const auto ffirst = fid;
+      loc = ((f & 0b11) + 3 + shift) % 3;
+      i = 0;
+      while (fid != flast) {
+        cout << "(" << fid << "," << loc << ") ";
+        result.face_strip.push_back((fid << 2) | loc);
+        if (result.face_strip.size() > 0) result.edge_weights.push_back(0.5f);
 
-    for (size_t i = last + 1; i < old_face_strip.size(); ++i)
-      add_face(old_face_strip[i] >> 2, surface);
+        f = surface.face_neighbors[fid][loc];
+        if (f == polyhedral_surface::invalid) {
+          cout << "invalid path" << endl;
+          break;
+        }
+        fid = f >> 2;
+        loc = ((f & 0b11) + 3 + rstep) % 3;
+        ++i;
+        if (fid == ffirst) {
+          cout << "endless loop detected" << endl;
+          break;
+        }
+      }
+      cout << endl;
+    }
+
+    // result.face_strip.push_back(face_strip[0]);
+    for (size_t i = index; i < face_strip.size(); ++i) {
+      const auto f = face_strip[i];
+      const auto fid = f >> 2;
+      const auto loc = f & 0b11;
+      cout << "(" << fid << "," << loc << ") ";
+      result.face_strip.push_back(face_strip[i]);
+      result.edge_weights.push_back(edge_weights[i - 1]);
+    }
+    cout << endl;
+    return result;
+
+    // const auto first = 1;
+
+    // auto f = face_strip[first];
+    // auto fid = f >> 2;
+    // auto loc = f & 0b11;
+    // f = surface.face_neighbors[fid][loc];
+    // fid = f >> 2;
+    // loc = f & 0b11;
+
+    // auto last = first + 1;
+    // auto f2 = face_strip[last];
+    // auto fid2 = f2 >> 2;
+    // auto loc2 = f2 & 0b11;
+
+    // const auto step = (3 + loc2 - loc) % 3;
+    // bool change = false;
+
+    // do {
+    //   f = surface.face_neighbors[fid2][loc2];
+    //   fid = f >> 2;
+    //   loc = f & 0b11;
+    //   ++last;
+    //   f2 = face_strip[last];
+    //   fid2 = f2 >> 2;
+    //   loc2 = f2 & 0b11;
+    //   const auto s = (3 + loc2 - loc) % 3;
+    //   change = (s != step);
+    // } while (!change);
+
+    // for (size_t i = 0; i < face_strip.size(); ++i) {
+    //   const auto fid = face_strip[i] >> 2;
+    //   const auto loc = face_strip[i] & 0b11;
+    //   cout << "(" << fid << "," << loc << ") ";
+    // }
+    // cout << endl;
+
+    // cout << first << ", " << last << endl;
+    // for (size_t i = first; i <= last; ++i) {
+    //   const auto fid = face_strip[i] >> 2;
+    //   const auto loc = face_strip[i] & 0b11;
+    //   cout << "(" << fid << "," << loc << ") ";
+    // }
+    // cout << endl;
+
+    // vector<uint32> old_face_strip = face_strip;
+    // clear();
+    // add_face(old_face_strip[0] >> 2, surface);
+    // const auto rstep = (step == 1) ? 2 : 1;
+    // const auto shift = (step == 1) ? -1 : 1;
+    // auto fend = old_face_strip[last] >> 2;
+    // f = old_face_strip[first];
+    // fid = f >> 2;
+    // loc = ((f & 0b11) + shift) % 3;
+    // cout << "(" << fid << "," << loc << ") ";
+    // add_face(fid, surface);
+    // do {
+    //   f = surface.face_neighbors[fid][loc];
+    //   fid = f >> 2;
+    //   loc = ((f & 0b11) + rstep) % 3;
+    //   cout << "(" << fid << "," << loc << ") ";
+    //   add_face(fid, surface);
+    // } while (fid != fend);
+    // cout << endl;
+
+    // for (size_t i = last + 1; i < old_face_strip.size(); ++i)
+    //   add_face(old_face_strip[i] >> 2, surface);
   }
 
   void print(const polyhedral_surface& surface) {

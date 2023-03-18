@@ -225,7 +225,8 @@ auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
   if ((face_neighbors[fid2][1] >> 2) == fid1) return {f2[1], f2[2]};
   if ((face_neighbors[fid2][2] >> 2) == fid1) return {f2[2], f2[0]};
 
-  throw runtime_error("Triangles have no common edge.");
+  throw runtime_error("Triangles "s + to_string(fid1) + " and " +
+                      to_string(fid2) + " have no common edge.");
 }
 
 auto polyhedral_surface::location(uint32 fid1, uint32 fid2) const -> uint32 {
