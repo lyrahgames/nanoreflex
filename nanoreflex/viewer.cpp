@@ -138,6 +138,7 @@ void viewer::process_events() {
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
       smooth_curve.smooth(surface);
+      smooth_curve = smooth_curve.reflect(surface);
       compute_surface_curve_points();
     }
   }
