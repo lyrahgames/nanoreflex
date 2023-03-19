@@ -93,9 +93,9 @@ void viewer::process_events() {
           expand_selection();
           break;
         case sf::Keyboard::S:
-          smooth_curve.smooth(surface);
-          compute_surface_curve_points();
-          curve.print(surface);
+          // smooth_curve.smooth(surface);
+          // compute_surface_curve_points();
+          // curve.print(surface);
           break;
         case sf::Keyboard::X:
           group = (group + 1) % surface.component_count();
@@ -115,8 +115,8 @@ void viewer::process_events() {
           break;
         case sf::Keyboard::R:
           // smooth_curve.reflect(surface);
-          smooth_curve = smooth_curve.reflect(surface);
-          compute_surface_curve_points();
+          // smooth_curve = smooth_curve.reflect(surface);
+          // compute_surface_curve_points();
           break;
       }
     }
@@ -138,9 +138,9 @@ void viewer::process_events() {
     }
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-      smooth_curve.smooth(surface);
-      smooth_curve = smooth_curve.reflect(surface);
-      compute_surface_curve_points();
+      // smooth_curve.smooth(surface);
+      // smooth_curve = smooth_curve.reflect(surface);
+      // compute_surface_curve_points();
     }
   }
 }
@@ -460,8 +460,13 @@ void viewer::add_surface_curve_points(float x, float y) {
   const auto p = intersection(r, surface);
   if (!p) return;
 
-  curve.add_face(p.f, surface);
+  // curve.add_face(p.f, surface);
+  // smooth_curve = curve;
+
+  surface.add_face(curve, p.f);
   smooth_curve = curve;
+
+  assert(surface.valid(curve));
 
   // Compute edge weights
   // if (path.size() == 1) {
@@ -559,13 +564,19 @@ void viewer::add_surface_curve_points(float x, float y) {
 
 void viewer::compute_surface_curve_points() {
   // surface_curve_points.vertices = points_from(surface, curve);
-  curve.generate_control_points(surface);
-  surface_curve_points.vertices = curve.control_points;
+  // curve.generate_control_points(surface);
+  // surface_curve_points.vertices = curve.control_points;
+
+  surface_curve_points.vertices = surface.points_from(curve);
   surface_curve_points.update();
 
   // smooth_curve_points.vertices = points_from(surface, smooth_curve);
-  smooth_curve.generate_control_points(surface);
-  smooth_curve_points.vertices = smooth_curve.control_points;
+  // smooth_curve.generate_control_points(surface);
+  // smooth_curve_points.vertices = smooth_curve.control_points;
+  // polyhedral_surface::surface_mesh_curve c;
+  // c.face_strip = smooth_curve.face_strip;
+  // c.edge_weights = smooth_curve.edge_weights;
+  smooth_curve_points.vertices = surface.points_from(curve);
   smooth_curve_points.update();
 
   vector<uint32> indices{};
@@ -579,8 +590,8 @@ void viewer::compute_surface_curve_points() {
 }
 
 void viewer::close_surface_curve() {
-  curve.close(surface);
-  smooth_curve = curve;
+  // curve.close(surface);
+  // smooth_curve = curve;
 }
 
 void viewer::sort_surface_faces_by_depth() {

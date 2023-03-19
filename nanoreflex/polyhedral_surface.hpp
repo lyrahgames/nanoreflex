@@ -52,7 +52,6 @@ struct polyhedral_surface {
   vector<vertex> vertices{};
   vector<face> faces{};
 
-  // void generate_topological_vertices();
   void generate_edges();
   void generate_face_adjacencies();
 
@@ -69,7 +68,6 @@ struct polyhedral_surface {
   auto common_edge(uint32 fid1, uint32 fid2) const -> edge;
   auto location(uint32 fid1, uint32 fid2) const -> uint32;
 
-  // vector<vertex_id> topological_vertices{};
   unordered_map<edge, edge::info, edge::hasher> edges{};
   vector<array<uint32, 3>> face_adjacencies{};
 
@@ -121,6 +119,21 @@ struct polyhedral_surface {
     generate_face_component_map();
     cout << "face component map generated" << endl;
   }
+
+  struct surface_mesh_curve {
+    constexpr auto size() const noexcept { return edge_weights.size(); }
+    constexpr void clear() {
+      face_strip.clear();
+      edge_weights.clear();
+    }
+    vector<uint32> face_strip{};
+    vector<float32> edge_weights{};
+  };
+  bool valid(const surface_mesh_curve& curve) const noexcept;
+  auto points_from(const surface_mesh_curve& curve) const -> vector<vec3>;
+  auto shortest_surface_mesh_curve(face_id src, face_id dst) const
+      -> surface_mesh_curve;
+  void add_face(surface_mesh_curve& curve, face_id fid) const;
 };
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;

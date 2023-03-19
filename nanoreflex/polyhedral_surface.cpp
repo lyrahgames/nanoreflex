@@ -19,41 +19,6 @@ void polyhedral_surface::edge::info::add_face(uint32 f, uint16 l) {
         "requirements for a two-dimensional manifold.");
 }
 
-// void polyhedral_surface::generate_topological_vertices() {
-//   // To quickly find vertices with identical positions,
-//   // we use a hash map with a custom hash function for 3D vectors.
-//   //
-//   constexpr auto hasher = [](const vec3& v) noexcept -> size_t {
-//     return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
-//            (size_t(bit_cast<uint32_t>(v.y)) << 5) ^
-//            size_t(bit_cast<uint32_t>(v.z));
-//   };
-//   unordered_map<vec3, vertex_id, decltype(hasher)> indices{};
-
-//   // By reserving enough space,
-//   // we omit reallocations during insertion.
-//   //
-//   indices.reserve(vertices.size());
-
-//   topological_vertices.resize(vertices.size());
-//   vertex_id id = 0;
-
-//   // Iterate over all vertices and insert their positions into the hash map.
-//   //
-//   for (vertex_id i = 0; i < vertices.size(); ++i) {
-//     // Check, whether the vertex has already been inserted.
-//     //
-//     const auto position = vertices[i].position;
-//     const auto it = indices.find(position);
-//     if (it == end(indices)) {
-//       topological_vertices[i] = id;
-//       indices.emplace(position, id++);
-//       continue;
-//     }
-//     topological_vertices[i] = it->second;
-//   }
-// }
-
 void polyhedral_surface::generate_topological_vertex_map() {
   const auto indices = views::iota(vertex_id(0), vertices.size());
   topological_vertex_map = {
@@ -70,15 +35,6 @@ void polyhedral_surface::generate_topological_vertex_map() {
 
 void polyhedral_surface::generate_edges() {
   edges.clear();
-  // for (size_t i = 0; i < faces.size(); ++i) {
-  //   const auto& f = faces[i];
-  //   edges[edge{topological_vertices[f[0]], topological_vertices[f[1]]}]
-  //       .add_face(i, 0);
-  //   edges[edge{topological_vertices[f[1]], topological_vertices[f[2]]}]
-  //       .add_face(i, 1);
-  //   edges[edge{topological_vertices[f[2]], topological_vertices[f[0]]}]
-  //       .add_face(i, 2);
-  // }
   for (size_t i = 0; i < faces.size(); ++i) {
     const auto& f = faces[i];
     edges[edge{topological_vertex_map(f[0]), topological_vertex_map(f[1])}]

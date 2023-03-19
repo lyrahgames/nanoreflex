@@ -52,22 +52,14 @@ class viewer : viewer_context {
 
   void load_shader(const filesystem::path& path, const string& name);
 
-  // void load_surface_shader(const filesystem::path& path);
-  // void reload_surface_shader();
-
-  // void load_selection_shader(const filesystem::path& path);
-
   void update_selection();
   void select_face(float x, float y);
   void expand_selection();
 
-  // void select_cohomology_group();
   void select_component();
-  // void select_oriented_cohomology_group();
 
   void reset_surface_curve_points();
   void add_surface_curve_points(float x, float y);
-  // void load_surface_curve_point_shader(czstring path);
   void compute_surface_curve_points();
 
   void close_surface_curve();
@@ -94,7 +86,6 @@ class viewer : viewer_context {
 
   // polyhedral_surface surface{};
   scene surface{};
-  // v2::scene surface2{};
 
   // The loading of mesh data can take quite a long time
   // and may let the window manager think the program is frozen
@@ -106,10 +97,6 @@ class viewer : viewer_context {
   float32 surface_process_time{};
   //
   float bounding_radius;
-  //
-  // opengl::shader_program surface_shader{};
-  // filesystem::path surface_shader_path{};
-  // filesystem::file_time_type surface_shader_time{};
 
   opengl::element_buffer surface_boundary{};
   opengl::element_buffer surface_unoriented_edges{};
@@ -118,7 +105,6 @@ class viewer : viewer_context {
   shader_manager shaders{};
 
   opengl::element_buffer selection{};
-  // opengl::shader_program selection_shader{};
 
   vector<bool> selected_faces{};
   uint32 group = 0;
@@ -126,9 +112,12 @@ class viewer : viewer_context {
 
   opengl::element_buffer edge_selection{};
 
-  surface_mesh_curve curve{};
+  // surface_mesh_curve curve{};
+  // surface_mesh_curve smooth_curve{};
+
+  polyhedral_surface::surface_mesh_curve curve{};
+  polyhedral_surface::surface_mesh_curve smooth_curve{};
   points surface_curve_points{};
-  surface_mesh_curve smooth_curve{};
   points smooth_curve_points{};
 };
 
