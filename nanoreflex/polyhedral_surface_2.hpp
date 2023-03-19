@@ -73,6 +73,11 @@ struct polyhedral_surface {
   unordered_map<edge, edge::info, edge::hasher> edges{};
   vector<array<uint32, 3>> face_adjacencies{};
 
+  auto face_adjacency(face_id fid, uint loc) const noexcept {
+    const auto f = face_adjacencies[fid][loc];
+    return pair{f >> 2, f & 0b11};
+  }
+
   discrete_quotient_map<vertex_id, vertex_id> topological_vertex_map{};
   void generate_topological_vertex_map();
 
