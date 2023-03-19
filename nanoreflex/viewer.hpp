@@ -119,6 +119,7 @@ class viewer : viewer_context {
   polyhedral_surface::surface_mesh_curve smooth_curve{};
   points surface_curve_points{};
   points smooth_curve_points{};
+  points critical_vertices{};
 };
 
 }  // namespace nanoreflex

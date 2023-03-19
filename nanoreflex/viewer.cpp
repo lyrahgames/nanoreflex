@@ -42,6 +42,7 @@ viewer::viewer() : viewer_context() {
   surface.setup();
   surface_curve_points.setup();
   smooth_curve_points.setup();
+  critical_vertices.setup();
 }
 
 void viewer::resize() {
@@ -96,6 +97,8 @@ void viewer::process_events() {
           // smooth_curve.smooth(surface);
           // compute_surface_curve_points();
           // curve.print(surface);
+          critical_vertices.vertices = surface.critical_points_from(curve);
+          critical_vertices.update();
           break;
         case sf::Keyboard::X:
           group = (group + 1) % surface.component_count();
@@ -235,6 +238,9 @@ void viewer::render() {
   shaders.names["points"]->second.shader.bind();
   smooth_curve_points.render();
   glDrawArrays(GL_LINE_STRIP, 0, smooth_curve_points.vertices.size());
+
+  shaders.names["critical"]->second.shader.bind();
+  critical_vertices.render();
 }
 
 void viewer::run() {

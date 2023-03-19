@@ -134,6 +134,9 @@ struct polyhedral_surface {
   auto shortest_surface_mesh_curve(face_id src, face_id dst) const
       -> surface_mesh_curve;
   void add_face(surface_mesh_curve& curve, face_id fid) const;
+
+  auto critical_points_from(const surface_mesh_curve& curve) const
+      -> vector<vec3>;
 };
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;

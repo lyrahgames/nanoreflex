@@ -137,6 +137,50 @@ void polyhedral_surface::add_face(surface_mesh_curve& curve,
   }
 }
 
+auto polyhedral_surface::critical_points_from(
+    const surface_mesh_curve& curve) const -> vector<vec3> {
+  vector<vec3> points{};
+
+  auto f1 = curve.face_strip[1];
+  auto fid1 = f1 >> 2;
+  auto loc1 = f1 & 0b11;
+  auto f2 = curve.face_strip[2];
+  auto fid2 = f2 >> 2;
+  auto loc2 = f2 & 0b11;
+  f2 = face_adjacencies[fid2][loc2];
+  fid2 = f2 >> 2;
+  loc2 = f2 & 0b11;
+  auto step = (3 + loc2 - loc1) % 3;
+  assert(fid1 == fid2);
+  assert(step != 0);
+
+  for (size_t i = 3; i < curve.face_strip.size(); ++i) {
+    f1 = curve.face_strip[i - 1];
+    fid1 = f1 >> 2;
+    loc1 = f1 & 0b11;
+    f2 = curve.face_strip[i];
+    fid2 = f2 >> 2;
+    loc2 = f2 & 0b11;
+    f2 = face_adjacencies[fid2][loc2];
+    fid2 = f2 >> 2;
+    loc2 = f2 & 0b11;
+    const auto s = (3 + loc2 - loc1) % 3;
+    assert(fid1 == fid2);
+    assert(s != 0);
+
+    if (step != s) {
+      const auto inner = position(faces[fid2][(loc1 + 2 - step) % 3]);
+      points.push_back(inner);
+      step = s;
+      cout << i - 1 << ", ";
+    }
+  }
+  cout << curve.face_strip.size() - 1;
+  cout << endl;
+
+  return points;
+}
+
 void surface_mesh_curve::clear() {
   face_strip.clear();
   edge_weights.clear();
