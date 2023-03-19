@@ -1,5 +1,5 @@
 #pragma once
-#include <nanoreflex/polyhedral_surface_2.hpp>
+#include <nanoreflex/polyhedral_surface.hpp>
 
 namespace nanoreflex {
 

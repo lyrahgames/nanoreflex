@@ -18,24 +18,6 @@ auto intersection(const ray& r, const triangle& f) noexcept
   return {u, v, t};
 }
 
-auto intersection(const ray& r,
-                  const deprecated::polyhedral_surface& surface) noexcept
-    -> ray_polyhedral_surface_intersection {
-  ray_polyhedral_surface_intersection result{};
-  result.t = infinity;
-  for (size_t i = 0; i < surface.faces.size(); ++i) {
-    const auto& v = surface.vertices;
-    const auto& f = surface.faces[i];
-    if (const auto p = intersection(
-            r, {v[f[0]].position, v[f[1]].position, v[f[2]].position})) {
-      if (p.t >= result.t) continue;
-      static_cast<ray_triangle_intersection&>(result) = p;
-      result.f = i;
-    }
-  }
-  return result;
-}
-
 auto intersection(const ray& r, const polyhedral_surface& surface) noexcept
     -> ray_polyhedral_surface_intersection {
   ray_polyhedral_surface_intersection result{};

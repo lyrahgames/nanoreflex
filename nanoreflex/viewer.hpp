@@ -2,8 +2,7 @@
 #include <nanoreflex/camera.hpp>
 #include <nanoreflex/opengl/opengl.hpp>
 #include <nanoreflex/points.hpp>
-// #include <nanoreflex/polyhedral_surface.hpp>
-#include <nanoreflex/polyhedral_surface_2.hpp>
+#include <nanoreflex/polyhedral_surface.hpp>
 #include <nanoreflex/shader_manager.hpp>
 #include <nanoreflex/surface_mesh_curve.hpp>
 #include <nanoreflex/utility.hpp>
@@ -131,12 +130,6 @@ class viewer : viewer_context {
   points surface_curve_points{};
   surface_mesh_curve smooth_curve{};
   points smooth_curve_points{};
-
-  // opengl::shader_program surface_curve_point_shader{};
-
-  // vector<uint32> curve_faces{};
-  // vec2 curve_start, curve_end;
-  // vector<float> curve_weights{};
 };
 
 }  // namespace nanoreflex
