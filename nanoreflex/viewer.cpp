@@ -300,14 +300,7 @@ void viewer::load_surface(const filesystem::path& path) {
       cout << "loaded" << endl;
 
       const auto preprocess_start = clock::now();
-      surface.generate_topological_vertices();
-      cout << "topological vertices generated" << endl;
-      surface.generate_edges();
-      cout << "edges generated" << endl;
-      surface.generate_face_neighbors();
-      cout << "face adjacencies generated" << endl;
-      surface.generate_face_component_map();
-      cout << "face component map generated" << endl;
+      surface.generate_topological_structure();
       const auto preprocess_end = clock::now();
 
       // Evaluate loading and processing time.
@@ -338,15 +331,15 @@ void viewer::handle_surface_load_task() {
 
   vector<uint32> lines{};
   for (size_t fid = 0; fid < surface.faces.size(); ++fid) {
-    if (surface.face_neighbors[fid][0] == polyhedral_surface::invalid) {
+    if (surface.face_adjacencies[fid][0] == polyhedral_surface::invalid) {
       lines.push_back(surface.faces[fid][0]);
       lines.push_back(surface.faces[fid][1]);
     }
-    if (surface.face_neighbors[fid][1] == polyhedral_surface::invalid) {
+    if (surface.face_adjacencies[fid][1] == polyhedral_surface::invalid) {
       lines.push_back(surface.faces[fid][1]);
       lines.push_back(surface.faces[fid][2]);
     }
-    if (surface.face_neighbors[fid][2] == polyhedral_surface::invalid) {
+    if (surface.face_adjacencies[fid][2] == polyhedral_surface::invalid) {
       lines.push_back(surface.faces[fid][2]);
       lines.push_back(surface.faces[fid][0]);
     }
@@ -433,8 +426,8 @@ void viewer::expand_selection() {
   for (size_t i = 0; i < selected_faces.size(); ++i) {
     if (!selected_faces[i]) continue;
     for (int j = 0; j < 3; ++j) {
-      if (surface.face_neighbors[i][j] == scene::invalid) continue;
-      new_selected_faces[surface.face_neighbors[i][j]] = true;
+      if (surface.face_adjacencies[i][j] == scene::invalid) continue;
+      new_selected_faces[surface.face_adjacencies[i][j]] = true;
     }
   }
   swap(new_selected_faces, selected_faces);

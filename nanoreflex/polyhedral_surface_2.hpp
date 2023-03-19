@@ -52,9 +52,9 @@ struct polyhedral_surface {
   vector<vertex> vertices{};
   vector<face> faces{};
 
-  void generate_topological_vertices();
+  // void generate_topological_vertices();
   void generate_edges();
-  void generate_face_neighbors();
+  void generate_face_adjacencies();
 
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
@@ -69,11 +69,26 @@ struct polyhedral_surface {
   auto common_edge(uint32 fid1, uint32 fid2) const -> edge;
   auto location(uint32 fid1, uint32 fid2) const -> uint32;
 
-  vector<vertex_id> topological_vertices{};
+  // vector<vertex_id> topological_vertices{};
   unordered_map<edge, edge::info, edge::hasher> edges{};
-  vector<array<uint32, 3>> face_neighbors{};
+  vector<array<uint32, 3>> face_adjacencies{};
 
-  vector<vertex_id> vertex_offset{};
+  discrete_quotient_map<vertex_id, vertex_id> topological_vertex_map{};
+  void generate_topological_vertex_map();
+
+  auto topological_vertex_count() const noexcept {
+    return topological_vertex_map.image_size();
+  }
+  auto topological_vertex(vertex_id vid) const noexcept {
+    return topological_vertex_map(vid);
+  }
+  auto topological_vertex_vertex_ids(vertex_id vid) const noexcept {
+    return topological_vertex_map[vid];
+  }
+  auto topological_vertex_vertices(vertex_id vid) const noexcept {
+    return topological_vertex_vertex_ids(vid) |
+           views::transform([&](auto vid) { return vertices[vid]; });
+  }
 
   using component_id = face_id;
   discrete_quotient_map<face_id, component_id> face_component_map{};
@@ -89,6 +104,17 @@ struct polyhedral_surface {
   auto component_faces(component_id component) const noexcept {
     return component_face_ids(component) |
            views::transform([&](auto fid) { return faces[fid]; });
+  }
+
+  void generate_topological_structure() {
+    generate_topological_vertex_map();
+    cout << "topological vertex map generated" << endl;
+    generate_edges();
+    cout << "edges generated" << endl;
+    generate_face_adjacencies();
+    cout << "face adjacencies generated" << endl;
+    generate_face_component_map();
+    cout << "face component map generated" << endl;
   }
 };
 

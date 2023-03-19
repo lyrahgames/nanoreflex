@@ -188,7 +188,7 @@ struct surface_mesh_curve {
     auto f = result.face_strip.back();
     auto fid = f >> 2;
     auto loc = f & 0b11;
-    f = surface.face_neighbors[fid][loc];
+    f = surface.face_adjacencies[fid][loc];
     fid = f >> 2;
     loc = f & 0b11;
 
@@ -208,7 +208,7 @@ struct surface_mesh_curve {
 
     size_t i = first + 1;
     for (; i < face_strip.size() - 1; ++i) {
-      f = surface.face_neighbors[fid2][loc2];
+      f = surface.face_adjacencies[fid2][loc2];
       fid = f >> 2;
       loc = f & 0b11;
       f2 = face_strip[i];
@@ -266,7 +266,7 @@ struct surface_mesh_curve {
         result.face_strip.push_back((fid << 2) | loc);
         result.edge_weights.push_back(0.5f);
 
-        f = surface.face_neighbors[fid][loc];
+        f = surface.face_adjacencies[fid][loc];
         if (f == polyhedral_surface::invalid) {
           cout << "invalid path" << endl;
           break;
@@ -313,7 +313,7 @@ struct surface_mesh_curve {
     // auto f = face_strip[0];
     // auto fid = f >> 2;
     // auto loc = f & 0b11;
-    // f = surface.face_neighbors[fid][loc];
+    // f = surface.face_adjacencies[fid][loc];
     // fid = f >> 2;
     // loc = f & 0b11;
 
@@ -335,7 +335,7 @@ struct surface_mesh_curve {
 
     // size_t i = 2;
     // for (; i < face_strip.size() - 1; ++i) {
-    //   f = surface.face_neighbors[fid2][loc2];
+    //   f = surface.face_adjacencies[fid2][loc2];
     //   fid = f >> 2;
     //   loc = f & 0b11;
     //   f2 = face_strip[i];
@@ -390,7 +390,7 @@ struct surface_mesh_curve {
     //     result.face_strip.push_back((fid << 2) | loc);
     //     if (result.face_strip.size() > 0) result.edge_weights.push_back(0.5f);
 
-    //     f = surface.face_neighbors[fid][loc];
+    //     f = surface.face_adjacencies[fid][loc];
     //     if (f == polyhedral_surface::invalid) {
     //       cout << "invalid path" << endl;
     //       break;
@@ -424,7 +424,7 @@ struct surface_mesh_curve {
     auto fid = face_strip.front() >> 2;
     auto loc = face_strip.front() & 0b11;
 
-    auto f = surface.face_neighbors[fid][loc];
+    auto f = surface.face_adjacencies[fid][loc];
     fid = f >> 2;
     loc = f & 0b11;
 
@@ -443,7 +443,7 @@ struct surface_mesh_curve {
       if (step == 1) cout << "right" << endl;
       if (step == 2) cout << "left" << endl;
 
-      f = surface.face_neighbors[fid2][loc2];
+      f = surface.face_adjacencies[fid2][loc2];
       fid = f >> 2;
       loc = f & 0b11;
     }

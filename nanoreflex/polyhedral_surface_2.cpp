@@ -19,70 +19,93 @@ void polyhedral_surface::edge::info::add_face(uint32 f, uint16 l) {
         "requirements for a two-dimensional manifold.");
 }
 
-void polyhedral_surface::generate_topological_vertices() {
-  // To quickly find vertices with identical positions,
-  // we use a hash map with a custom hash function for 3D vectors.
-  //
-  constexpr auto hasher = [](const vec3& v) noexcept -> size_t {
-    return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
-           (size_t(bit_cast<uint32_t>(v.y)) << 5) ^
-           size_t(bit_cast<uint32_t>(v.z));
-  };
-  unordered_map<vec3, vertex_id, decltype(hasher)> indices{};
+// void polyhedral_surface::generate_topological_vertices() {
+//   // To quickly find vertices with identical positions,
+//   // we use a hash map with a custom hash function for 3D vectors.
+//   //
+//   constexpr auto hasher = [](const vec3& v) noexcept -> size_t {
+//     return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
+//            (size_t(bit_cast<uint32_t>(v.y)) << 5) ^
+//            size_t(bit_cast<uint32_t>(v.z));
+//   };
+//   unordered_map<vec3, vertex_id, decltype(hasher)> indices{};
 
-  // By reserving enough space,
-  // we omit reallocations during insertion.
-  //
-  indices.reserve(vertices.size());
+//   // By reserving enough space,
+//   // we omit reallocations during insertion.
+//   //
+//   indices.reserve(vertices.size());
 
-  topological_vertices.resize(vertices.size());
-  vertex_id id = 0;
+//   topological_vertices.resize(vertices.size());
+//   vertex_id id = 0;
 
-  // Iterate over all vertices and insert their positions into the hash map.
-  //
-  for (vertex_id i = 0; i < vertices.size(); ++i) {
-    // Check, whether the vertex has already been inserted.
-    //
-    const auto position = vertices[i].position;
-    const auto it = indices.find(position);
-    if (it == end(indices)) {
-      topological_vertices[i] = id;
-      indices.emplace(position, id++);
-      continue;
-    }
-    topological_vertices[i] = it->second;
-  }
+//   // Iterate over all vertices and insert their positions into the hash map.
+//   //
+//   for (vertex_id i = 0; i < vertices.size(); ++i) {
+//     // Check, whether the vertex has already been inserted.
+//     //
+//     const auto position = vertices[i].position;
+//     const auto it = indices.find(position);
+//     if (it == end(indices)) {
+//       topological_vertices[i] = id;
+//       indices.emplace(position, id++);
+//       continue;
+//     }
+//     topological_vertices[i] = it->second;
+//   }
+// }
+
+void polyhedral_surface::generate_topological_vertex_map() {
+  const auto indices = views::iota(vertex_id(0), vertices.size());
+  topological_vertex_map = {
+      indices,
+      [&](auto vid1, auto vid2) { return position(vid1) == position(vid2); },
+      [&](auto vid) {
+        const auto v = position(vid);
+        return (size_t(bit_cast<uint32_t>(v.x)) << 11) ^
+               (size_t(bit_cast<uint32_t>(v.y)) << 5) ^
+               size_t(bit_cast<uint32_t>(v.z));
+      }};
+  assert(topological_vertex_map.valid());
 }
 
 void polyhedral_surface::generate_edges() {
   edges.clear();
+  // for (size_t i = 0; i < faces.size(); ++i) {
+  //   const auto& f = faces[i];
+  //   edges[edge{topological_vertices[f[0]], topological_vertices[f[1]]}]
+  //       .add_face(i, 0);
+  //   edges[edge{topological_vertices[f[1]], topological_vertices[f[2]]}]
+  //       .add_face(i, 1);
+  //   edges[edge{topological_vertices[f[2]], topological_vertices[f[0]]}]
+  //       .add_face(i, 2);
+  // }
   for (size_t i = 0; i < faces.size(); ++i) {
     const auto& f = faces[i];
-    edges[edge{topological_vertices[f[0]], topological_vertices[f[1]]}]
+    edges[edge{topological_vertex_map(f[0]), topological_vertex_map(f[1])}]
         .add_face(i, 0);
-    edges[edge{topological_vertices[f[1]], topological_vertices[f[2]]}]
+    edges[edge{topological_vertex_map(f[1]), topological_vertex_map(f[2])}]
         .add_face(i, 1);
-    edges[edge{topological_vertices[f[2]], topological_vertices[f[0]]}]
+    edges[edge{topological_vertex_map(f[2]), topological_vertex_map(f[0])}]
         .add_face(i, 2);
   }
 }
 
-void polyhedral_surface::generate_face_neighbors() {
-  face_neighbors.resize(faces.size());
+void polyhedral_surface::generate_face_adjacencies() {
+  face_adjacencies.resize(faces.size());
   for (const auto& [e, info] : edges) {
     if (info.oriented()) {
       const auto it = edges.find(edge{e[1], e[0]});
       if (it == end(edges))
-        face_neighbors[info.face[0]][info.location[0]] = invalid;
+        face_adjacencies[info.face[0]][info.location[0]] = invalid;
       else {
         const auto& [e2, info2] = *it;
-        face_neighbors[info.face[0]][info.location[0]] =
+        face_adjacencies[info.face[0]][info.location[0]] =
             uint32(info2.face[0] << 2) | uint32(info2.location[0]);
       }
     } else {
-      face_neighbors[info.face[0]][info.location[0]] =
+      face_adjacencies[info.face[0]][info.location[0]] =
           uint32(info.face[1] << 2) | uint32(info.location[1]);
-      face_neighbors[info.face[1]][info.location[1]] =
+      face_adjacencies[info.face[1]][info.location[1]] =
           uint32(info.face[0] << 2) | uint32(info.location[0]);
     }
   }
@@ -103,7 +126,7 @@ void polyhedral_surface::generate_face_component_map() {
       face_component[f] = component;
       const auto& face = faces[f];
       for (int i = 0; i < 3; ++i) {
-        const auto n = face_neighbors[f][i];
+        const auto n = face_adjacencies[f][i];
         if (n == invalid) continue;
         const auto nid = (n >> 2);
         if (face_component[nid] != invalid) continue;
@@ -171,7 +194,7 @@ auto polyhedral_surface::shortest_face_path(uint32 src, uint32 dst) const
 
     visited[current] = true;
 
-    const auto neighbor_faces = face_neighbors[current];
+    const auto neighbor_faces = face_adjacencies[current];
     for (int i = 0; i < 3; ++i) {
       const auto neighbor = (neighbor_faces[i] >> 2);
       if (visited[neighbor]) continue;
@@ -225,9 +248,9 @@ auto polyhedral_surface::common_edge(uint32 fid1, uint32 fid2) const -> edge {
   const auto& f1 = faces[fid1];
   const auto& f2 = faces[fid2];
 
-  if ((face_neighbors[fid2][0] >> 2) == fid1) return {f2[0], f2[1]};
-  if ((face_neighbors[fid2][1] >> 2) == fid1) return {f2[1], f2[2]};
-  if ((face_neighbors[fid2][2] >> 2) == fid1) return {f2[2], f2[0]};
+  if ((face_adjacencies[fid2][0] >> 2) == fid1) return {f2[0], f2[1]};
+  if ((face_adjacencies[fid2][1] >> 2) == fid1) return {f2[1], f2[2]};
+  if ((face_adjacencies[fid2][2] >> 2) == fid1) return {f2[2], f2[0]};
 
   throw runtime_error("Triangles "s + to_string(fid1) + " and " +
                       to_string(fid2) + " have no common edge.");
@@ -237,9 +260,9 @@ auto polyhedral_surface::location(uint32 fid1, uint32 fid2) const -> uint32 {
   const auto& f1 = faces[fid1];
   const auto& f2 = faces[fid2];
 
-  if ((face_neighbors[fid1][0] >> 2) == fid2) return 0;
-  if ((face_neighbors[fid1][1] >> 2) == fid2) return 1;
-  if ((face_neighbors[fid1][2] >> 2) == fid2) return 2;
+  if ((face_adjacencies[fid1][0] >> 2) == fid2) return 0;
+  if ((face_adjacencies[fid1][1] >> 2) == fid2) return 1;
+  if ((face_adjacencies[fid1][2] >> 2) == fid2) return 2;
 
   throw runtime_error("Triangles are not adjacent to each other.");
 }
