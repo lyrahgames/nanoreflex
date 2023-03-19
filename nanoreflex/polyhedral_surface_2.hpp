@@ -1,5 +1,6 @@
 #pragma once
 #include <nanoreflex/aabb.hpp>
+#include <nanoreflex/discrete_quotient_map.hpp>
 #include <nanoreflex/opengl/opengl.hpp>
 #include <nanoreflex/stl_surface.hpp>
 #include <nanoreflex/utility.hpp>
@@ -55,9 +56,6 @@ struct polyhedral_surface {
   void generate_edges();
   void generate_face_neighbors();
 
-  void identify_face_components();
-  void generate_components();
-
   bool oriented() const noexcept;
   bool has_boundary() const noexcept;
   bool consistent() const noexcept;
@@ -75,17 +73,23 @@ struct polyhedral_surface {
   unordered_map<edge, edge::info, edge::hasher> edges{};
   vector<array<uint32, 3>> face_neighbors{};
 
-  // Face map
-  // using group_id = face_id;  // Every face could be part
-  using component_id = face_id;
-  face_map<component_id> face_component{};
-  component_id component_count = 0;
-  vector<face_id> component_faces_offset{};
-  vector<face_id> component_faces{};
+  vector<vertex_id> vertex_offset{};
 
-  // auto component(face_id) const noexcept -> component_id;
-  // auto faces(component_id) const noexcept -> range::view...;
-  // auto face_index_iterators(component_id) const noexcept -> pair<>;
+  using component_id = face_id;
+  discrete_quotient_map<face_id, component_id> face_component_map{};
+
+  void generate_face_component_map();
+  auto component_count() const noexcept {
+    return face_component_map.image_size();
+  }
+  auto component(face_id fid) const noexcept { return face_component_map(fid); }
+  auto component_face_ids(component_id component) const noexcept {
+    return face_component_map[component];
+  }
+  auto component_faces(component_id component) const noexcept {
+    return component_face_ids(component) |
+           views::transform([&](auto fid) { return faces[fid]; });
+  }
 };
 
 auto polyhedral_surface_from(const stl_surface& data) -> polyhedral_surface;

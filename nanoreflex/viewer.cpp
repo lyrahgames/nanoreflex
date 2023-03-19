@@ -98,11 +98,12 @@ void viewer::process_events() {
           curve.print(surface);
           break;
         case sf::Keyboard::X:
-          ++group;
+          group = (group + 1) % surface.component_count();
           select_component();
           break;
         case sf::Keyboard::Y:
-          --group;
+          group = (group + surface.component_count() - 1) %
+                  surface.component_count();
           select_component();
           break;
         case sf::Keyboard::Z:
@@ -292,35 +293,40 @@ void viewer::set_y_as_up() {
 void viewer::load_surface(const filesystem::path& path) {
   const auto loader = [this](const filesystem::path& path) {
     try {
-      const auto start = clock::now();
-
+      const auto load_start = clock::now();
       surface.host() = polyhedral_surface_from(path);
+      const auto load_end = clock::now();
 
-      const auto mid = clock::now();
+      cout << "loaded" << endl;
 
+      const auto preprocess_start = clock::now();
       surface.generate_topological_vertices();
+      cout << "topological vertices generated" << endl;
       surface.generate_edges();
+      cout << "edges generated" << endl;
       surface.generate_face_neighbors();
-      surface.identify_face_components();
-      surface.generate_components();
-      const auto end = clock::now();
+      cout << "face adjacencies generated" << endl;
+      surface.generate_face_component_map();
+      cout << "face component map generated" << endl;
+      const auto preprocess_end = clock::now();
 
       // Evaluate loading and processing time.
-      surface_load_time = duration<float32>(mid - start).count();
-      surface_process_time = duration<float32>(end - mid).count();
+      surface_load_time = duration<float32>(load_end - load_start).count();
+      surface_process_time =
+          duration<float32>(preprocess_end - preprocess_start).count();
     } catch (exception& e) {
       cout << "failed.\n" << e.what() << endl;
       return;
     }
   };
   surface_load_task = async(launch::async, loader, path);
-  cout << "Loading " << path << "..." << flush;
+  cout << "Loading " << path << "..." << endl;
 }
 
 void viewer::handle_surface_load_task() {
   if (!surface_load_task.valid()) return;
   if (future_status::ready != surface_load_task.wait_for(0s)) {
-    cout << "." << flush;
+    // cout << "." << flush;
     return;
   }
   cout << "done." << endl << '\n';
@@ -396,7 +402,7 @@ void viewer::print_surface_info() {
        << setw(left_width) << "boundary"
        << " = " << setw(right_width) << surface.has_boundary() << '\n'
        << setw(left_width) << "components"
-       << " = " << setw(right_width) << surface.component_count << '\n'
+       << " = " << setw(right_width) << surface.component_count() << '\n'
        << endl;
 }
 
@@ -436,10 +442,15 @@ void viewer::expand_selection() {
 }
 
 void viewer::select_component() {
-  selected_faces.resize(surface.faces.size());
-  for (size_t i = 0; i < surface.faces.size(); ++i)
-    selected_faces[i] = (surface.face_component[i] == group);
-  update_selection();
+  // selected_faces.resize(surface.faces.size());
+  // for (size_t i = 0; i < surface.faces.size(); ++i)
+  //   selected_faces[i] = (surface.face_component[i] == group);
+  // update_selection();
+  // for (auto fid : surface.component_faces(group))
+
+  const auto r = surface.component_faces(group);
+  decltype(surface.faces) faces(ranges::begin(r), ranges::end(r));
+  selection.allocate_and_initialize(faces);
 }
 
 void viewer::reset_surface_curve_points() {
